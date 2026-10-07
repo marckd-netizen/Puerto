@@ -7,7 +7,7 @@ declare(strict_types=1);
  */
 final class Sincronizador
 {
-    private const CAMPOS = ['buque', 'viaje', 'linea', 'agencia', 'muelle', 'eta', 'etb', 'etd', 'operativa', 'estado', 'cierre'];
+    private const CAMPOS = ['buque', 'viaje', 'linea', 'agencia', 'muelle', 'eta', 'etb', 'etd', 'servicio', 'operativa', 'estado', 'cierre'];
 
     /** @param string[] $vigilados */
     public function __construct(private PDO $db, private array $vigilados)

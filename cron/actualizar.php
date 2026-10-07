@@ -4,8 +4,8 @@
  * Uso:   php cron/actualizar.php            (todas las terminales)
  *        php cron/actualizar.php TCP        (solo una)
  */
-// Cron sugerido (cada 10 minutos):
-//   */10 * * * * php /ruta/a/Puerto/cron/actualizar.php >> /ruta/a/Puerto/data/cron.log 2>&1
+// Cron sugerido (cada 2 horas):
+//   0 */2 * * * php /ruta/a/Puerto/cron/actualizar.php >> /ruta/a/Puerto/data/cron.log 2>&1
 declare(strict_types=1);
 
 require dirname(__DIR__) . '/src/bootstrap.php';

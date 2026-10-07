@@ -4,7 +4,7 @@ declare(strict_types=1);
 const ETIQUETAS = [
     'buque' => 'Buque', 'viaje' => 'Viaje', 'linea' => 'Línea', 'agencia' => 'Agencia',
     'muelle' => 'Muelle', 'eta' => 'ETA', 'etb' => 'ETB', 'etd' => 'ETD',
-    'operativa' => 'Operativa', 'estado' => 'Estado', 'cierre' => 'Cierre',
+    'servicio' => 'Servicio', 'operativa' => 'Operativa', 'estado' => 'Estado', 'cierre' => 'Cierre',
 ];
 
 function encabezado(string $titulo, int $refresh = 0): void
@@ -48,34 +48,25 @@ function mostrarValor(string $campo, ?string $v): string
     return esCampoFecha($campo) ? Texto::mostrarFecha($v) : (string) $v;
 }
 
-/** Diferencia en horas entre dos fechas "Y-m-d H:i", o null si no son fechas. */
-function horasEntre(?string $desde, ?string $hasta): ?float
+/** "hace 35 min", "hace 3 h", "hace 2 días" */
+function haceCuanto(string $fecha, int $ahora): string
 {
-    $a = $desde ? DateTime::createFromFormat('Y-m-d H:i', $desde) : false;
-    $b = $hasta ? DateTime::createFromFormat('Y-m-d H:i', $hasta) : false;
-    if (!$a || !$b) {
-        return null;
-    }
-    return ($b->getTimestamp() - $a->getTimestamp()) / 3600;
-}
-
-function formatoHoras(float $h): string
-{
-    $abs = abs($h);
-    $txt = $abs >= 48 ? round($abs / 24, 1) . 'd' : round($abs) . 'h';
-    return ($h > 0 ? '+' : '−') . $txt;
-}
-
-function nombreDia(string $fecha): string
-{
-    $dias = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
-    $ts = strtotime($fecha);
-    if ($ts === false) {
-        return 'Sin fecha';
-    }
-    $hoy = strtotime('today');
-    $prefijo = match ((int) round(($ts - $hoy) / 86400)) {
-        0 => 'Hoy, ', 1 => 'Mañana, ', -1 => 'Ayer, ', default => '',
+    $min = max(0, (int) floor(($ahora - strtotime($fecha)) / 60));
+    return match (true) {
+        $min < 1 => 'recién',
+        $min < 60 => "hace $min min",
+        $min < 48 * 60 => 'hace ' . intdiv($min, 60) . ' h',
+        default => 'hace ' . intdiv($min, 1440) . ' días',
     };
-    return $prefijo . $dias[(int) date('w', $ts)] . ' ' . date('d/m/Y', $ts);
+}
+
+/** Valor actual, con el anterior tachado si cambió en las últimas horas. */
+function valorConCambio(string $campo, array $escala, array $recientes): string
+{
+    $html = e(mostrarValor($campo, $escala[$campo])) ?: '—';
+    if (isset($recientes[$campo])) {
+        $antes = e(mostrarValor($campo, $recientes[$campo]['valor_anterior'])) ?: '(vacío)';
+        return '<span class="antes">' . $antes . '</span><strong>' . $html . '</strong>';
+    }
+    return $html;
 }

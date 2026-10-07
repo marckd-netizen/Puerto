@@ -16,8 +16,15 @@ return [
 
     'timezone' => 'America/Montevideo',
 
-    // Horas durante las que un cambio se sigue destacando en la pantalla principal.
+    // Resaltado de filas según la antigüedad del último cambio:
+    // naranja hasta 'horas_cambio_reciente', naranja claro hasta 'horas_destacado',
+    // y sin resaltar después.
+    'horas_cambio_reciente' => 2,
     'horas_destacado' => 24,
+
+    // Si el ESTADO contiene alguno de estos textos, el buque se considera operando
+    // y la fila se pinta de verde (sin importar mayúsculas ni tildes).
+    'estados_operando' => ['operando', 'en operacion', 'trabajando', 'atracado', 'working', 'berthed', 'alongside'],
 
     // Segundos entre recargas automáticas de la página.
     'auto_refresh' => 300,
@@ -29,7 +36,7 @@ return [
     'terminales' => [
         'TCP' => [
             'nombre' => 'TCP - Terminal Cuenca del Plata',
-            'url'    => 'https://www.tcp.com.uy/',          // AJUSTAR: página de arribos/programación
+            'url'    => 'https://mitcp.katoennatie.com.uy/', // PENDIENTE: ajustar a la pantalla/consulta de buques
             'parser' => 'tabla_html',
             'color'  => '#1f6feb',
             'columnas' => [
@@ -41,14 +48,15 @@ return [
                 'eta'       => ['eta', 'arribo', 'llegada', 'arribo estimado'],
                 'etb'       => ['etb', 'atraque'],
                 'etd'       => ['etd', 'salida', 'zarpe'],
-                'operativa' => ['operativa', 'operacion', 'operación', 'servicio'],
+                'servicio'  => ['servicio', 'service', 'ruta', 'loop'],
+                'operativa' => ['operativa', 'operacion', 'operación'],
                 'estado'    => ['estado', 'status', 'situacion'],
                 'cierre'    => ['cierre', 'cut off', 'cutoff', 'stacking'],
             ],
         ],
         'MONTECON' => [
             'nombre' => 'Montecon',
-            'url'    => 'https://www.montecon.com.uy/',     // AJUSTAR: página de arribos/programación
+            'url'    => 'https://online2.montecon.com.uy/', // PENDIENTE: ajustar a la pantalla/consulta de buques
             'parser' => 'tabla_html',
             'color'  => '#d29922',
             'columnas' => [
@@ -60,7 +68,8 @@ return [
                 'eta'       => ['eta', 'arribo', 'llegada'],
                 'etb'       => ['etb', 'atraque'],
                 'etd'       => ['etd', 'salida', 'zarpe'],
-                'operativa' => ['operativa', 'operacion', 'operación', 'servicio'],
+                'servicio'  => ['servicio', 'service', 'ruta', 'loop'],
+                'operativa' => ['operativa', 'operacion', 'operación'],
                 'estado'    => ['estado', 'status', 'situacion'],
                 'cierre'    => ['cierre', 'cut off', 'cutoff', 'stacking'],
             ],
@@ -68,7 +77,7 @@ return [
     ],
 
     // Campos cuyo cambio se registra y se destaca.
-    'campos_vigilados' => ['eta', 'etb', 'etd', 'muelle', 'operativa', 'estado', 'cierre'],
+    'campos_vigilados' => ['eta', 'etd', 'estado', 'servicio'],
 
     'http' => [
         'timeout'    => 30,

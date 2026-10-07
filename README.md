@@ -2,21 +2,33 @@
 
 Sitio en PHP + MySQL que junta en una sola página las llegadas de buques que
 publican las dos terminales (TCP y Montecon) y **destaca los cambios en la
-operativa prevista** (ETA, ETB, ETD, muelle, operativa, estado, cierre).
+operativa prevista** (ETA, ETD, estado y servicio).
 
 ![Captura](docs/captura.png)
 
 ## Qué hace
 
-- Un proceso (`cron/actualizar.php`) lee cada 10 minutos las páginas de las terminales.
+- Un proceso (`cron/actualizar.php`) lee cada 2 horas las páginas de las dos terminales.
 - Compara con lo guardado y registra cada cambio (valor anterior → valor nuevo).
-- La página principal muestra todos los buques ordenados por ETA y agrupados por día:
-  - Filas en **amarillo** con etiqueta **CAMBIO**: el dato modificado aparece en negrita con el valor anterior tachado.
-  - Etiqueta **NUEVO** para los buques que aparecieron en las últimas 24 h.
-  - Demora o adelanto respecto a la **primera ETA publicada** (por ejemplo, `+20h`).
-  - Filtros por terminal, búsqueda (buque, viaje, línea o agencia), "solo con cambios" y "marcar como visto".
-  - Indicador de la última lectura de cada terminal, en rojo si falló.
+- La página principal muestra **una fila por buque**. Si el buque figura en las dos
+  terminales, sus datos aparecen juntos. Columnas:
+  **Buque · Estado · Terminal · ETA/ETD - TCP · ETA/ETD - MONTECON · Servicio · Último cambio**.
+- Colores de las filas:
+  - **Verde**: el buque está operando, según el texto del estado (lista configurable en `estados_operando`).
+  - **Naranja**: tuvo un cambio hace menos de 2 horas.
+  - **Naranja claro**: tuvo un cambio hace entre 2 y 24 horas.
+  - **Sin color**: pasaron más de 24 horas sin cambios.
+
+  Si un buque está operando y además cambió, la fila queda en verde y la celda
+  "Último cambio" toma el tono naranja que corresponde.
+- Mientras dura el resaltado, el dato que cambió se muestra en negrita, con el valor anterior tachado.
+- Filtros por terminal, búsqueda, "solo con cambios" e "incluir ya zarpados". Arriba se ve
+  la última lectura de cada terminal, en rojo si falló.
 - `historial.php`: todos los cambios de los últimos días, o el historial completo de un buque.
+
+Los cambios se detectan en cada lectura, así que la hora del cambio es la de la
+lectura en que se vio. Con lecturas cada 2 horas, el cambio real pudo haber
+ocurrido hasta 2 horas antes.
 
 ## Instalación
 
@@ -36,7 +48,7 @@ operativa prevista** (ETA, ETB, ETD, muelle, operativa, estado, cierre).
    accesible desde internet.
 5. Programar la lectura con cron:
    ```
-   */10 * * * * php /ruta/a/Puerto/cron/actualizar.php >> /ruta/a/Puerto/data/cron.log 2>&1
+   0 */2 * * * php /ruta/a/Puerto/cron/actualizar.php >> /ruta/a/Puerto/data/cron.log 2>&1
    ```
    Para probar a mano: `php cron/actualizar.php` (o `php cron/actualizar.php TCP` para una sola terminal).
 

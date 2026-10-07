@@ -6,6 +6,7 @@ require_once __DIR__ . '/Texto.php';
 require_once __DIR__ . '/TablaHtmlParser.php';
 require_once __DIR__ . '/Lector.php';
 require_once __DIR__ . '/Sincronizador.php';
+require_once __DIR__ . '/Tablero.php';
 
 function config(): array
 {

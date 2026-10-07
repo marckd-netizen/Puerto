@@ -11,6 +11,7 @@ CREATE TABLE IF NOT EXISTS escalas (
     eta           VARCHAR(30)  NULL,
     etb           VARCHAR(30)  NULL,
     etd           VARCHAR(30)  NULL,
+    servicio      VARCHAR(100) NULL,
     operativa     VARCHAR(255) NULL,
     estado        VARCHAR(100) NULL,
     cierre        VARCHAR(30)  NULL,
@@ -29,7 +30,6 @@ CREATE TABLE IF NOT EXISTS cambios (
     valor_anterior  VARCHAR(255) NULL,
     valor_nuevo     VARCHAR(255) NULL,
     detectado       DATETIME     NOT NULL,
-    visto           TINYINT(1)   NOT NULL DEFAULT 0,
     KEY idx_escala (escala_id),
     KEY idx_detectado (detectado),
     CONSTRAINT fk_cambios_escala FOREIGN KEY (escala_id) REFERENCES escalas (id) ON DELETE CASCADE

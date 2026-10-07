@@ -1,12 +1,14 @@
 :root {
     --fondo: #f5f6f8; --panel: #fff; --texto: #1d2330; --suave: #667085; --borde: #e3e6ec;
-    --cambio: #fff4d6; --cambio-borde: #f0b429; --nuevo: #e6f4ea; --error: #c0392b; --ok: #1e8e3e;
+    --error: #c0392b;
     --tachado: #98a2b3;
+    --operando: #c9efd3; --reciente: #ffcf99; --cambio-claro: #ffeedd;
 }
 @media (prefers-color-scheme: dark) {
     :root {
         --fondo: #12151b; --panel: #1b2029; --texto: #e6e9ef; --suave: #98a2b3; --borde: #2c3340;
-        --cambio: #3a3017; --cambio-borde: #d29922; --nuevo: #173322; --tachado: #667085;
+        --tachado: #667085;
+        --operando: #1d4a2c; --reciente: #6b3d0f; --cambio-claro: #3a2a1a;
     }
 }
 * { box-sizing: border-box; }
@@ -22,24 +24,30 @@ form.filtros { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; ma
 form.filtros input, form.filtros select, button { font: inherit; padding: 6px 10px; border: 1px solid var(--borde); border-radius: 6px; background: var(--panel); color: var(--texto); }
 button { cursor: pointer; }
 .resumen { margin-bottom: 12px; color: var(--suave); }
-.resumen strong { color: var(--texto); }
 .tabla-wrap { overflow-x: auto; background: var(--panel); border: 1px solid var(--borde); border-radius: 8px; }
 table { border-collapse: collapse; width: 100%; }
 th, td { padding: 7px 10px; border-bottom: 1px solid var(--borde); text-align: left; white-space: nowrap; vertical-align: top; }
 th { position: sticky; top: 0; background: var(--panel); font-size: 12px; text-transform: uppercase; color: var(--suave); }
-tr.dia td { background: var(--fondo); font-weight: 600; font-size: 12px; color: var(--suave); }
-tr.con-cambio { background: var(--cambio); }
-tr.con-cambio td:first-child { box-shadow: inset 4px 0 0 var(--cambio-borde); }
-tr.es-nuevo td:first-child { box-shadow: inset 4px 0 0 var(--ok); }
-td.cambiado { font-weight: 600; }
 .antes { display: block; font-size: 11px; color: var(--tachado); text-decoration: line-through; font-weight: normal; }
 .terminal { display: inline-block; padding: 1px 7px; border-radius: 4px; color: #fff; font-size: 11px; font-weight: 600; }
-.demora { font-size: 11px; margin-left: 4px; }
-.demora.tarde { color: var(--error); }
-.demora.antes-de { color: var(--ok); }
-.etiqueta { font-size: 10px; padding: 1px 5px; border-radius: 3px; background: var(--cambio-borde); color: #000; margin-left: 4px; }
-.etiqueta.nuevo { background: var(--ok); color: #fff; }
-.buque { font-weight: 600; }
 .vacio { padding: 40px; text-align: center; color: var(--suave); }
 .historial td { white-space: normal; }
 @media (max-width: 700px) { main { padding: 8px; } th, td { padding: 6px; } }
+
+/* Tablero unificado */
+.leyenda { display: flex; flex-wrap: wrap; gap: 16px; margin-bottom: 12px; color: var(--suave); font-size: 13px; align-items: center; }
+.muestra { display: inline-block; width: 14px; height: 14px; border-radius: 3px; vertical-align: -2px; border: 1px solid var(--borde); }
+.muestra.operando, tr.nivel-operando > td { background: var(--operando); }
+.muestra.reciente, tr.nivel-reciente > td, tr.nivel-operando > td.cambio-reciente { background: var(--reciente); }
+.muestra.cambio, tr.nivel-cambio > td, tr.nivel-operando > td.cambio-cambio { background: var(--cambio-claro); }
+.estado-lecturas { margin-bottom: 12px; }
+.tablero td { white-space: normal; }
+.tablero td.fechas { white-space: nowrap; }
+.tablero small { color: var(--suave); font-size: 11px; }
+.tablero .antes { display: inline; margin-right: 4px; }
+.tablero .buque { font-weight: 600; }
+.tablero .viaje { display: block; font-weight: normal; font-size: 12px; color: var(--suave); }
+.ultimo-cambio { min-width: 180px; }
+.ultimo-cambio .detalle { font-size: 12px; margin-top: 2px; }
+.historial-link { font-size: 11px; color: var(--suave); margin-right: 6px; }
+.sin-dato { color: var(--suave); }
