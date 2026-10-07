@@ -42,8 +42,7 @@ ocurrido hasta 2 horas antes.
    ```bash
    mysql -u puerto -p puerto < sql/schema.mysql.sql
    ```
-3. `cp config.example.php config.php` y completar los datos de la base y **las URL
-   de las páginas de arribos de cada terminal**.
+3. `cp config.example.php config.php` y completar los datos de la base.
 4. Apuntar el servidor web a la carpeta `public/`. Solo esa carpeta debe quedar
    accesible desde internet.
 5. Programar la lectura con cron:
@@ -52,18 +51,44 @@ ocurrido hasta 2 horas antes.
    ```
    Para probar a mano: `php cron/actualizar.php` (o `php cron/actualizar.php TCP` para una sola terminal).
 
-## Ajustar a las páginas de las terminales
+## De dónde salen los datos
 
-Cada terminal se configura en `config.php`, en `terminales`. El lector `tabla_html`
-busca en la página la tabla cuyos encabezados coinciden con los nombres de
-`columnas`. No distingue mayúsculas ni tildes y acepta encabezados como "Cierre Documental"
-para `cierre`. Si una terminal usa otro nombre de columna, se agrega a la lista
-correspondiente.
+### TCP
+Se usa la misma consulta que hace la página pública https://mitcp.katoennatie.com.uy/
+(Line-up): `https://api.katoennatie.com.uy/public/tcp/mitcp/frontend/v1/api/line-up`,
+con la `api-key` que esa página envía desde cualquier navegador. Devuelve JSON con
+`vessel`, `week`, `service`, `eta`, `etb`, `ets`, `notes`, entre otros datos.
 
-Si una página carga los datos con JavaScript, o el lector no encuentra la tabla,
-la lectura queda marcada en rojo en la página principal. En ese caso hay que
-agregar un lector específico en `src/Lector.php`, por ejemplo si la terminal
-publica un JSON, un Excel o un PDF.
+- TCP **no publica estado**. El estado se deduce de las fechas: "Operando" entre ETB y ETS
+  (fila verde), "Zarpado" después de ETS, "Atraque confirmado" si ya tiene ETB y
+  "Programado" si no la tiene.
+- TCP **no publica número de viaje**. Cada escala se identifica por buque + semana (`Sem. 41`).
+- La columna ETD de TCP muestra la **ETS** que publica la terminal.
+
+Si la `api-key` cambiara algún día, la lectura de TCP quedaría en rojo. La nueva clave se
+obtiene igual que antes: F12 → Network → consulta `line-up` → encabezado `api-key`. Se copia en `config.php`.
+
+### Montecon
+Pendiente: https://online2.montecon.com.uy/. Falta obtener la consulta o la tabla que trae los buques.
+
+### Probar una terminal
+```bash
+php cron/diagnostico.php TCP
+```
+Muestra qué propiedades trae la respuesta, cuál se usa para cada campo y los primeros
+buques leídos, sin guardar nada en la base.
+
+### Agregar o ajustar una terminal
+Cada terminal se configura en `config.php`, en `terminales`:
+- `parser => 'json_api'`: para consultas que devuelven JSON. Busca sola la lista de buques
+  y asigna cada propiedad según `columnas`.
+- `parser => 'tabla_html'`: para páginas con una tabla HTML. Busca la tabla cuyos
+  encabezados coinciden con `columnas`.
+
+En los dos casos los nombres no distinguen mayúsculas ni tildes. Otras opciones de cada terminal:
+- `encabezados`: encabezados HTTP que se envían con la consulta.
+- `formato`: cómo se muestra un campo, por ejemplo `'Sem. %s'`.
+- `estado_por_fechas`: calcula el estado a partir de la ETB y la ETS.
 
 Para no vaciar la lista por un error, una lectura que no devuelve buques no
 modifica los datos guardados.
@@ -73,6 +98,6 @@ modifica los datos guardados.
 ```bash
 php tests/prueba.php
 ```
-Usa páginas de ejemplo (`tests/fixtures/`) y SQLite en memoria. No necesita internet ni MySQL.
+Usa respuestas de ejemplo (`tests/fixtures/`, incluido un line-up real de TCP) y SQLite en memoria. No necesita internet ni MySQL.
 
 Para probar el sitio completo sin MySQL, en `config.php` se puede poner `'driver' => 'sqlite'`.

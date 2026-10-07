@@ -73,7 +73,10 @@ final class Tablero
         $ultimo = null;
         $detalle = [];
 
-        foreach ($f['terminales'] as $cod => $e) {
+        foreach ($f['terminales'] as $cod => &$e) {
+            if (($e['estado'] ?? '') === '' && !empty($this->cfg['terminales'][$cod]['estado_por_fechas'])) {
+                $e['estado'] = $this->estadoPorFechas($e);
+            }
             if ($e['estado'] !== null && $e['estado'] !== '') {
                 $estados[$cod] = $e['estado'];
                 $f['operando'] = $f['operando'] || $this->esOperando($e['estado']);
@@ -94,6 +97,7 @@ final class Tablero
                 }
             }
         }
+        unset($e);
 
         $f['estados'] = $estados;
         $f['servicio'] = implode(' / ', $servicios);
@@ -120,6 +124,25 @@ final class Tablero
         };
     }
 
+    /** Para terminales que no publican estado: se deduce de ETB y ETD/ETS. */
+    public function estadoPorFechas(array $e): ?string
+    {
+        $etb = $this->timestamp($e['etb'] ?? null);
+        $etd = $this->timestamp($e['etd'] ?? null);
+        return match (true) {
+            $etd !== null && $this->ahora >= $etd => 'Zarpado',
+            $etb !== null && $this->ahora >= $etb => 'Operando',
+            $etb !== null => 'Atraque confirmado',
+            default => 'Programado',
+        };
+    }
+
+    private function timestamp(?string $fecha): ?int
+    {
+        $d = $fecha ? DateTime::createFromFormat('Y-m-d H:i', $fecha) : false;
+        return $d ? $d->getTimestamp() : null;
+    }
+
     public function esOperando(?string $estado): bool
     {
         $estado = Texto::normalizar($estado);
@@ -136,8 +159,8 @@ final class Tablero
 
     private function horasEntre(?string $a, ?string $b): ?float
     {
-        $ta = $a ? DateTime::createFromFormat('Y-m-d H:i', $a) : false;
-        $tb = $b ? DateTime::createFromFormat('Y-m-d H:i', $b) : false;
-        return ($ta && $tb) ? ($tb->getTimestamp() - $ta->getTimestamp()) / 3600 : null;
+        $ta = $this->timestamp($a);
+        $tb = $this->timestamp($b);
+        return ($ta !== null && $tb !== null) ? ($tb - $ta) / 3600 : null;
     }
 }

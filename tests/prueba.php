@@ -26,6 +26,10 @@ function verificar(bool $cond, string $desc): void
 function leer(Lector $lector, array $base, string $codigo, string $archivo): array
 {
     $t = $base['terminales'][$codigo];
+    if (str_ends_with($archivo, '.html') && $t['parser'] !== 'tabla_html') {
+        // Las páginas HTML de ejemplo prueban el lector de tablas, aunque la terminal real use otro.
+        $t = $base['terminales']['MONTECON'];
+    }
     $t['url'] = __DIR__ . "/fixtures/$archivo";
     return $lector->leerTerminal($t);
 }
@@ -93,6 +97,31 @@ $manana = new Tablero($base, strtotime('2026-10-08 10:00:00'));
 $f2 = $manana->filas($escalas, $ultimos, []);
 verificar(!in_array('cambio', array_column($f2, 'nivel'), true) && !in_array('reciente', array_column($f2, 'nivel'), true), '24 h después: ya no se resalta ningún cambio');
 verificar($tablero->esOperando('En Operación') && !$tablero->esOperando('Programado'), 'estados de operación');
+
+echo "TCP: line-up en JSON\n";
+$db2 = Db::conectar(['driver' => 'sqlite', 'sqlite_path' => ':memory:']);
+$sync2 = new Sincronizador($db2, $base['campos_vigilados']);
+$j1 = leer($lector, $base, 'TCP', 'tcp_lineup_1.json');
+verificar(count($j1) === 25, 'JSON: 25 buques');
+$silje = array_values(array_filter($j1, fn($f) => $f['buque'] === 'AS SILJE'));
+verificar(count($silje) === 2 && $silje[0]['viaje'] === 'Sem. 41', 'JSON: AS SILJE en dos semanas distintas');
+verificar($silje[0]['etd'] === '2026-10-14 11:00' && $silje[0]['servicio'] === 'PATAGONIA 01', 'JSON: ETS→ETD y servicio');
+verificar(Texto::fecha('2026-10-07T17:00:00Z') === '2026-10-07 14:00', 'JSON: fecha UTC pasada a hora de Montevideo');
+$r = $sync2->sincronizar('TCP', $j1, '2026-10-07 08:00:00');
+verificar($r['nuevas'] === 25, 'JSON: 25 escalas nuevas (buque + semana)');
+$r = $sync2->sincronizar('TCP', leer($lector, $base, 'TCP', 'tcp_lineup_2.json'), '2026-10-07 10:00:00');
+verificar($r['retiradas'] === 1 && $r['actualizadas'] === 2, 'JSON: 1 retirado y 2 con cambios');
+$labrea = $db2->query("SELECT c.campo FROM cambios c JOIN escalas e ON e.id = c.escala_id WHERE e.buque = 'MAERSK LABREA' ORDER BY c.campo")->fetchAll(PDO::FETCH_COLUMN);
+verificar($labrea === ['eta', 'etd'], 'JSON: MAERSK LABREA cambia ETA y ETD');
+
+$t = new Tablero($base, strtotime('2026-10-12 20:00:00'));
+verificar($t->estadoPorFechas(['etb' => '2026-10-12 13:00', 'etd' => '2026-10-13 08:00']) === 'Operando', 'entre ETB y ETS → Operando');
+verificar($t->estadoPorFechas(['etb' => '2026-10-13 11:00', 'etd' => '2026-10-14 11:00']) === 'Atraque confirmado', 'con ETB futura → Atraque confirmado');
+verificar($t->estadoPorFechas(['etb' => '2026-10-10 13:00', 'etd' => '2026-10-11 02:00']) === 'Zarpado', 'después de ETS → Zarpado');
+verificar($t->estadoPorFechas(['etb' => null, 'etd' => null]) === 'Programado', 'sin ETB → Programado');
+$filasTcp = $t->filas($db2->query('SELECT * FROM escalas WHERE activa = 1')->fetchAll(), [], []);
+$artemissio = array_values(array_filter($filasTcp, fn($f) => $f['buque'] === 'CAP SAN ARTEMISSIO'))[0];
+verificar($artemissio['nivel'] === 'operando' && $artemissio['estados']['TCP'] === 'Operando', 'CAP SAN ARTEMISSIO operando el 12/10 20:00 → verde');
 
 echo $fallas ? "\n$fallas prueba(s) fallaron\n" : "\nTodas las pruebas pasaron\n";
 exit($fallas ? 1 : 0);

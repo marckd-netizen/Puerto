@@ -36,22 +36,30 @@ return [
     'terminales' => [
         'TCP' => [
             'nombre' => 'TCP - Terminal Cuenca del Plata',
-            'url'    => 'https://mitcp.katoennatie.com.uy/', // PENDIENTE: ajustar a la pantalla/consulta de buques
-            'parser' => 'tabla_html',
+            // Consulta que usa la página pública https://mitcp.katoennatie.com.uy/ (Line-up).
+            // La api-key es la que la propia página envía desde cualquier navegador.
+            'url'    => 'https://api.katoennatie.com.uy/public/tcp/mitcp/frontend/v1/api/line-up',
+            'parser' => 'json_api',
+            'encabezados' => [
+                'api-key' => '80413d2ebbc8429b9680d09d566f9927',
+                'Referer' => 'https://mitcp.katoennatie.com.uy/',
+                'Accept'  => 'application/json, text/plain, */*',
+            ],
             'color'  => '#1f6feb',
+            // TCP no publica estado: se muestra "Operando" entre ETB y ETS,
+            // "Zarpado" después de ETS y "Atraque confirmado" si ya tiene ETB.
+            'estado_por_fechas' => true,
+            // TCP no publica número de viaje: se usa la semana de la escala.
+            'formato' => ['viaje' => 'Sem. %s'],
             'columnas' => [
-                'buque'     => ['buque', 'nave', 'vessel', 'barco'],
-                'viaje'     => ['viaje', 'voyage', 'voy'],
-                'linea'     => ['linea', 'naviera', 'line', 'operador'],
-                'agencia'   => ['agencia', 'agente', 'agent'],
-                'muelle'    => ['muelle', 'sitio', 'berth', 'puesto'],
-                'eta'       => ['eta', 'arribo', 'llegada', 'arribo estimado'],
-                'etb'       => ['etb', 'atraque'],
-                'etd'       => ['etd', 'salida', 'zarpe'],
-                'servicio'  => ['servicio', 'service', 'ruta', 'loop'],
-                'operativa' => ['operativa', 'operacion', 'operación'],
-                'estado'    => ['estado', 'status', 'situacion'],
-                'cierre'    => ['cierre', 'cut off', 'cutoff', 'stacking'],
+                'buque'     => ['vessel', 'vesselName', 'buque'],
+                'viaje'     => ['voyage', 'week'],
+                'servicio'  => ['service', 'servicio'],
+                'eta'       => ['eta'],
+                'etb'       => ['etb'],
+                'etd'       => ['ets', 'etd'],
+                'estado'    => ['status', 'estado'],
+                'operativa' => ['notes'],
             ],
         ],
         'MONTECON' => [

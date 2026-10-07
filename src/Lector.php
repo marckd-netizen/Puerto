@@ -8,7 +8,8 @@ final class Lector
     {
     }
 
-    public function descargar(string $url): string
+    /** @param array<string, string> $encabezados */
+    public function descargar(string $url, array $encabezados = []): string
     {
         if (!preg_match('#^https?://#i', $url)) {
             // Permite usar un archivo local (útil para pruebas).
@@ -27,6 +28,7 @@ final class Lector
             CURLOPT_TIMEOUT        => $this->http['timeout'] ?? 30,
             CURLOPT_USERAGENT      => $this->http['user_agent'] ?? 'PuertoUnificado/1.0',
             CURLOPT_ENCODING       => '',
+            CURLOPT_HTTPHEADER     => array_map(fn($k, $v) => "$k: $v", array_keys($encabezados), $encabezados),
         ]);
         $cuerpo = curl_exec($ch);
         $codigo = curl_getinfo($ch, CURLINFO_HTTP_CODE);
@@ -45,14 +47,21 @@ final class Lector
     /** @return list<array<string, ?string>> */
     public function leerTerminal(array $terminal): array
     {
-        $html = $this->descargar($terminal['url']);
+        $contenido = $this->descargar($terminal['url'], $terminal['encabezados'] ?? []);
         $parser = match ($terminal['parser'] ?? 'tabla_html') {
             'tabla_html' => new TablaHtmlParser($terminal['columnas']),
+            'json_api' => new JsonApiParser($terminal['columnas']),
             default => throw new RuntimeException('Parser desconocido: ' . $terminal['parser']),
         };
 
         $filas = [];
-        foreach ($parser->leer($html) as $f) {
+        foreach ($parser->leer($contenido) as $f) {
+            // Formato de presentación opcional por campo, por ejemplo 'viaje' => 'Sem. %s'.
+            foreach ($terminal['formato'] ?? [] as $campo => $formato) {
+                if (($f[$campo] ?? '') !== '') {
+                    $f[$campo] = sprintf($formato, $f[$campo]);
+                }
+            }
             foreach (['eta', 'etb', 'etd', 'cierre'] as $campoFecha) {
                 if (array_key_exists($campoFecha, $f)) {
                     $f[$campoFecha] = Texto::fecha($f[$campoFecha]);

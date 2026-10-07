@@ -4,6 +4,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/Db.php';
 require_once __DIR__ . '/Texto.php';
 require_once __DIR__ . '/TablaHtmlParser.php';
+require_once __DIR__ . '/JsonApiParser.php';
 require_once __DIR__ . '/Lector.php';
 require_once __DIR__ . '/Sincronizador.php';
 require_once __DIR__ . '/Tablero.php';

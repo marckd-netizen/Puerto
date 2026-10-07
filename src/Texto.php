@@ -30,6 +30,15 @@ final class Texto
             return null;
         }
 
+        // ISO con zona horaria (2026-10-07T17:00:00Z o -03:00): se pasa a la hora local.
+        if (preg_match('/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:?\d{2})$/', $s)) {
+            try {
+                return (new DateTimeImmutable($s))->setTimezone(new DateTimeZone(date_default_timezone_get()))->format('Y-m-d H:i');
+            } catch (Exception) {
+                return $s;
+            }
+        }
+
         if (preg_match('/^(\d{4})-(\d{1,2})-(\d{1,2})(?:[ T](\d{1,2}):(\d{2}))?/', $s, $m)) {
             return self::armar((int) $m[1], (int) $m[2], (int) $m[3], $m[4] ?? null, $m[5] ?? null) ?? $s;
         }
