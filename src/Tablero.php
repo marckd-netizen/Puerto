@@ -41,7 +41,9 @@ final class Tablero
             $filas[$destino]['terminales'][$e['terminal']] = $e;
         }
 
+        $ordenTerminales = array_flip(array_keys($this->cfg['terminales'] ?? []));
         foreach ($filas as &$f) {
+            uksort($f['terminales'], fn($a, $b) => ($ordenTerminales[$a] ?? 99) <=> ($ordenTerminales[$b] ?? 99));
             $this->completar($f, $ultimos, $recientes);
         }
         unset($f);
@@ -74,8 +76,11 @@ final class Tablero
         $detalle = [];
 
         foreach ($f['terminales'] as $cod => &$e) {
-            if (($e['estado'] ?? '') === '' && !empty($this->cfg['terminales'][$cod]['estado_por_fechas'])) {
-                $e['estado'] = $this->estadoPorFechas($e);
+            if (str_contains(strtoupper((string) $e['viaje']), 'CANCEL')) {
+                $e['estado'] = 'Cancelado';
+            } elseif (($e['estado'] ?? '') === '' && !empty($this->cfg['terminales'][$cod]['estado_por_fechas'])) {
+                $opcion = $this->cfg['terminales'][$cod]['estado_por_fechas'];
+                $e['estado'] = $this->estadoPorFechas($e, is_array($opcion) ? $opcion : []);
             }
             if ($e['estado'] !== null && $e['estado'] !== '') {
                 $estados[$cod] = $e['estado'];
@@ -124,17 +129,30 @@ final class Tablero
         };
     }
 
-    /** Para terminales que no publican estado: se deduce de ETB y ETD/ETS. */
-    public function estadoPorFechas(array $e): ?string
+    /**
+     * Para terminales que no publican estado: se deduce de ETA, ETB y ETD.
+     * @param array<string, string> $etiquetas permite cambiar los textos por terminal
+     */
+    public function estadoPorFechas(array $e, array $etiquetas = []): ?string
     {
+        $etiquetas += [
+            'zarpado'   => 'Zarpado',
+            'operando'  => 'Operando',
+            'en_rada'   => 'En rada',
+            'con_etb'   => 'Atraque confirmado',
+            'sin_etb'   => 'Programado',
+        ];
+        $eta = $this->timestamp($e['eta'] ?? null);
         $etb = $this->timestamp($e['etb'] ?? null);
         $etd = $this->timestamp($e['etd'] ?? null);
-        return match (true) {
-            $etd !== null && $this->ahora >= $etd => 'Zarpado',
-            $etb !== null && $this->ahora >= $etb => 'Operando',
-            $etb !== null => 'Atraque confirmado',
-            default => 'Programado',
+        $clave = match (true) {
+            $etd !== null && $this->ahora >= $etd => 'zarpado',
+            $etb !== null && $this->ahora >= $etb => 'operando',
+            $eta !== null && $this->ahora >= $eta => 'en_rada',
+            $etb !== null => 'con_etb',
+            default => 'sin_etb',
         };
+        return $etiquetas[$clave];
     }
 
     private function timestamp(?string $fecha): ?int

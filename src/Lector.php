@@ -8,8 +8,11 @@ final class Lector
     {
     }
 
-    /** @param array<string, string> $encabezados */
-    public function descargar(string $url, array $encabezados = []): string
+    /**
+     * @param array<string, string> $encabezados
+     * @param string|null $cuerpo si se indica, la consulta se envía por POST con ese cuerpo
+     */
+    public function descargar(string $url, array $encabezados = [], ?string $cuerpo = null): string
     {
         if (!preg_match('#^https?://#i', $url)) {
             // Permite usar un archivo local (útil para pruebas).
@@ -30,6 +33,9 @@ final class Lector
             CURLOPT_ENCODING       => '',
             CURLOPT_HTTPHEADER     => array_map(fn($k, $v) => "$k: $v", array_keys($encabezados), $encabezados),
         ]);
+        if ($cuerpo !== null) {
+            curl_setopt($ch, CURLOPT_POSTFIELDS, $cuerpo);
+        }
         $cuerpo = curl_exec($ch);
         $codigo = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         $error = curl_error($ch);
@@ -47,10 +53,10 @@ final class Lector
     /** @return list<array<string, ?string>> */
     public function leerTerminal(array $terminal): array
     {
-        $contenido = $this->descargar($terminal['url'], $terminal['encabezados'] ?? []);
+        $contenido = $this->descargar($terminal['url'], $terminal['encabezados'] ?? [], $terminal['cuerpo_post'] ?? null);
         $parser = match ($terminal['parser'] ?? 'tabla_html') {
             'tabla_html' => new TablaHtmlParser($terminal['columnas']),
-            'json_api' => new JsonApiParser($terminal['columnas']),
+            'json_api' => new JsonApiParser($terminal['columnas'], $terminal['excluir_si'] ?? []),
             default => throw new RuntimeException('Parser desconocido: ' . $terminal['parser']),
         };
 

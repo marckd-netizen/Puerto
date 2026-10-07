@@ -40,7 +40,8 @@ final class Texto
         }
 
         if (preg_match('/^(\d{4})-(\d{1,2})-(\d{1,2})(?:[ T](\d{1,2}):(\d{2}))?/', $s, $m)) {
-            return self::armar((int) $m[1], (int) $m[2], (int) $m[3], $m[4] ?? null, $m[5] ?? null) ?? $s;
+            $f = self::armar((int) $m[1], (int) $m[2], (int) $m[3], $m[4] ?? null, $m[5] ?? null);
+            return $f === '' ? null : ($f ?? $s);
         }
 
         if (preg_match('/^(\d{1,2})[\/.\-](\d{1,2})(?:[\/.\-](\d{2,4}))?(?:\s*-?\s*(\d{1,2})[:.h](\d{2}))?/', $s, $m)) {
@@ -56,6 +57,9 @@ final class Texto
 
     private static function armar(int $a, int $mes, int $d, ?string $h, ?string $min): ?string
     {
+        if ($a < 1900) {
+            return ''; // fechas "vacías" como 0001-01-01
+        }
         if (!checkdate($mes, $d, $a)) {
             return null;
         }

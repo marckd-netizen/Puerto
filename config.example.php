@@ -46,8 +46,8 @@ return [
                 'Accept'  => 'application/json, text/plain, */*',
             ],
             'color'  => '#1f6feb',
-            // TCP no publica estado: se muestra "Operando" entre ETB y ETS,
-            // "Zarpado" después de ETS y "Atraque confirmado" si ya tiene ETB.
+            // TCP no publica estado: "Operando" entre ETB y ETS, "Zarpado" después de ETS,
+            // "En rada" entre ETA y ETB, "Atraque confirmado" si ya tiene ETB y si no "Programado".
             'estado_por_fechas' => true,
             // TCP no publica número de viaje: se usa la semana de la escala.
             'formato' => ['viaje' => 'Sem. %s'],
@@ -64,22 +64,32 @@ return [
         ],
         'MONTECON' => [
             'nombre' => 'Montecon',
-            'url'    => 'https://online2.montecon.com.uy/', // PENDIENTE: ajustar a la pantalla/consulta de buques
-            'parser' => 'tabla_html',
+            // Consulta que usa la página pública https://online2.montecon.com.uy/ (Schedule).
+            'url'    => 'https://api-online2.montecon.com.uy/api/query/schedule',
+            'parser' => 'json_api',
+            'cuerpo_post' => '{}',
+            'encabezados' => [
+                'Content-Type' => 'application/json',
+                'Accept'       => 'application/json, text/plain, */*',
+                'Origin'       => 'https://online2.montecon.com.uy',
+                'Referer'      => 'https://online2.montecon.com.uy/',
+            ],
             'color'  => '#d29922',
+            // Montecon no publica estado: se deduce de llegada a rada (ETA), comienzo de
+            // operaciones (ETB) y salida. Como siempre publica ETB, antes de la llegada es "Programado".
+            'estado_por_fechas' => ['con_etb' => 'Programado'],
+            // Igual que la página de Montecon, no se muestran los marcados como ocultos.
+            'excluir_si' => ['noMostrarSchedule' => true],
             'columnas' => [
-                'buque'     => ['buque', 'nave', 'vessel', 'barco'],
-                'viaje'     => ['viaje', 'voyage', 'voy'],
-                'linea'     => ['linea', 'naviera', 'line', 'operador'],
-                'agencia'   => ['agencia', 'agente', 'agent'],
-                'muelle'    => ['muelle', 'sitio', 'berth', 'puesto'],
-                'eta'       => ['eta', 'arribo', 'llegada'],
-                'etb'       => ['etb', 'atraque'],
-                'etd'       => ['etd', 'salida', 'zarpe'],
-                'servicio'  => ['servicio', 'service', 'ruta', 'loop'],
-                'operativa' => ['operativa', 'operacion', 'operación'],
-                'estado'    => ['estado', 'status', 'situacion'],
-                'cierre'    => ['cierre', 'cut off', 'cutoff', 'stacking'],
+                'buque'    => ['buque'],
+                'viaje'    => ['nroViaje'],
+                'servicio' => ['servicio'],
+                'linea'    => ['armador'],
+                'eta'      => ['llegadaRada'],          // llegada a rada
+                'etb'      => ['comienzoOperaciones'],  // inicio de operaciones / atraque
+                'etd'      => ['salida'],
+                'cierre'   => ['cutOff'],
+                'estado'   => ['estado', 'status'],
             ],
         ],
     ],

@@ -1,7 +1,7 @@
 <?php
 /**
  * Prueba la lectura de una terminal sin guardar nada en la base.
- * Uso: php cron/diagnostico.php TCP
+ * Uso: php cron/diagnostico.php TCP [--crudo]   (--crudo muestra también la respuesta tal cual)
  */
 declare(strict_types=1);
 
@@ -22,8 +22,11 @@ $lector = new Lector($cfg['http'] ?? []);
 
 echo "Leyendo {$terminal['url']}\n";
 try {
-    $contenido = $lector->descargar($terminal['url'], $terminal['encabezados'] ?? []);
+    $contenido = $lector->descargar($terminal['url'], $terminal['encabezados'] ?? [], $terminal['cuerpo_post'] ?? null);
     echo 'Recibidos ' . strlen($contenido) . " bytes\n";
+    if (in_array('--crudo', $argv, true)) {
+        echo "\nRespuesta (primeros 3000 caracteres):\n" . mb_substr($contenido, 0, 3000) . "\n";
+    }
 
     if (($terminal['parser'] ?? '') === 'json_api') {
         $p = new JsonApiParser($terminal['columnas']);

@@ -59,9 +59,9 @@ Se usa la misma consulta que hace la página pública https://mitcp.katoennatie.
 con la `api-key` que esa página envía desde cualquier navegador. Devuelve JSON con
 `vessel`, `week`, `service`, `eta`, `etb`, `ets`, `notes`, entre otros datos.
 
-- TCP **no publica estado**. El estado se deduce de las fechas: "Operando" entre ETB y ETS
-  (fila verde), "Zarpado" después de ETS, "Atraque confirmado" si ya tiene ETB y
-  "Programado" si no la tiene.
+- TCP **no publica estado**. Se calcula a partir de las fechas: "En rada" entre ETA y ETB,
+  "Operando" entre ETB y ETS (fila verde) y "Zarpado" después de ETS. Antes de la ETA
+  queda "Atraque confirmado" si ya tiene ETB, o "Programado" si no la tiene.
 - TCP **no publica número de viaje**. Cada escala se identifica por buque + semana (`Sem. 41`).
 - La columna ETD de TCP muestra la **ETS** que publica la terminal.
 
@@ -69,7 +69,26 @@ Si la `api-key` cambiara algún día, la lectura de TCP quedaría en rojo. La nu
 obtiene igual que antes: F12 → Network → consulta `line-up` → encabezado `api-key`. Se copia en `config.php`.
 
 ### Montecon
-Pendiente: https://online2.montecon.com.uy/. Falta obtener la consulta o la tabla que trae los buques.
+Se usa la misma consulta que hace la página pública https://online2.montecon.com.uy/:
+`POST https://api-online2.montecon.com.uy/api/query/schedule` con cuerpo `{}`.
+
+| Montecon            | En el tablero |
+|---------------------|---------------|
+| `buque`, `nroViaje` | Buque y viaje |
+| `servicio`          | Servicio      |
+| `llegadaRada`       | ETA (llegada a rada) |
+| `comienzoOperaciones` | ETB (inicio de operaciones) |
+| `salida`            | ETD           |
+
+- Montecon tampoco **publica estado**. Se calcula así: "Programado" antes de la llegada a rada,
+  "En rada" hasta el comienzo de operaciones, "Operando" (verde) hasta la salida y después "Zarpado".
+- Las fechas `0001-01-01` se toman como "sin dato".
+- Los viajes que terminan en `/CANCEL` se muestran como "Cancelado".
+- Los marcados `noMostrarSchedule` no se muestran, igual que en la página de Montecon.
+
+### Buques en las dos terminales
+Si un buque figura en TCP y en Montecon con fechas a menos de 7 días, aparece en una sola
+fila con las fechas de cada terminal (por ejemplo, las barcazas fluviales).
 
 ### Probar una terminal
 ```bash
@@ -88,7 +107,9 @@ Cada terminal se configura en `config.php`, en `terminales`:
 En los dos casos los nombres no distinguen mayúsculas ni tildes. Otras opciones de cada terminal:
 - `encabezados`: encabezados HTTP que se envían con la consulta.
 - `formato`: cómo se muestra un campo, por ejemplo `'Sem. %s'`.
-- `estado_por_fechas`: calcula el estado a partir de la ETB y la ETS.
+- `estado_por_fechas`: calcula el estado a partir de ETA, ETB y ETD. Se le pueden cambiar las etiquetas.
+- `cuerpo_post`: envía la consulta por POST con ese cuerpo.
+- `excluir_si`: descarta los elementos que tengan esa propiedad con ese valor.
 
 Para no vaciar la lista por un error, una lectura que no devuelve buques no
 modifica los datos guardados.
@@ -98,6 +119,6 @@ modifica los datos guardados.
 ```bash
 php tests/prueba.php
 ```
-Usa respuestas de ejemplo (`tests/fixtures/`, incluido un line-up real de TCP) y SQLite en memoria. No necesita internet ni MySQL.
+Usa respuestas de ejemplo (`tests/fixtures/`, con respuestas reales de TCP y Montecon) y SQLite en memoria. No necesita internet ni MySQL.
 
 Para probar el sitio completo sin MySQL, en `config.php` se puede poner `'driver' => 'sqlite'`.

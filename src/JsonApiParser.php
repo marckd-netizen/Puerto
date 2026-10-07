@@ -11,8 +11,11 @@ declare(strict_types=1);
  */
 final class JsonApiParser
 {
-    /** @param array<string, string[]> $campos campo => nombres posibles de propiedad */
-    public function __construct(private array $campos)
+    /**
+     * @param array<string, string[]> $campos campo => nombres posibles de propiedad
+     * @param array<string, mixed> $excluir propiedad => valor; se descartan los elementos que lo tengan
+     */
+    public function __construct(private array $campos, private array $excluir = [])
     {
     }
 
@@ -38,6 +41,11 @@ final class JsonApiParser
         $resultado = [];
         foreach ($lista as $item) {
             $plano = $this->aplanar($item);
+            foreach ($this->excluir as $propiedad => $valor) {
+                if (array_key_exists($propiedad, $plano) && $plano[$propiedad] === $valor) {
+                    continue 2;
+                }
+            }
             $registro = [];
             foreach ($mapa as $campo => $propiedad) {
                 $registro[$campo] = Texto::limpiar($this->texto($plano[$propiedad] ?? null));
