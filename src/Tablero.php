@@ -79,8 +79,7 @@ final class Tablero
             if (str_contains(strtoupper((string) $e['viaje']), 'CANCEL')) {
                 $e['estado'] = 'Cancelado';
             } elseif (($e['estado'] ?? '') === '' && !empty($this->cfg['terminales'][$cod]['estado_por_fechas'])) {
-                $opcion = $this->cfg['terminales'][$cod]['estado_por_fechas'];
-                $e['estado'] = $this->estadoPorFechas($e, is_array($opcion) ? $opcion : []);
+                $e['estado'] = $this->estadoPorFechas($e);
             }
             if ($e['estado'] !== null && $e['estado'] !== '') {
                 $estados[$cod] = $e['estado'];
@@ -130,29 +129,18 @@ final class Tablero
     }
 
     /**
-     * Para terminales que no publican estado: se deduce de ETA, ETB y ETD.
-     * @param array<string, string> $etiquetas permite cambiar los textos por terminal
+     * Para terminales que no publican estado: "Operando" entre ETB y ETD,
+     * "Zarpado" después de ETD y "Esperado" antes del atraque.
      */
-    public function estadoPorFechas(array $e, array $etiquetas = []): ?string
+    public function estadoPorFechas(array $e): string
     {
-        $etiquetas += [
-            'zarpado'   => 'Zarpado',
-            'operando'  => 'Operando',
-            'en_rada'   => 'En rada',
-            'con_etb'   => 'Atraque confirmado',
-            'sin_etb'   => 'Programado',
-        ];
-        $eta = $this->timestamp($e['eta'] ?? null);
         $etb = $this->timestamp($e['etb'] ?? null);
         $etd = $this->timestamp($e['etd'] ?? null);
-        $clave = match (true) {
-            $etd !== null && $this->ahora >= $etd => 'zarpado',
-            $etb !== null && $this->ahora >= $etb => 'operando',
-            $eta !== null && $this->ahora >= $eta => 'en_rada',
-            $etb !== null => 'con_etb',
-            default => 'sin_etb',
+        return match (true) {
+            $etd !== null && $this->ahora >= $etd => 'Zarpado',
+            $etb !== null && $this->ahora >= $etb => 'Operando',
+            default => 'Esperado',
         };
-        return $etiquetas[$clave];
     }
 
     private function timestamp(?string $fecha): ?int

@@ -133,9 +133,9 @@ verificar($labrea === ['eta', 'etd'], 'JSON: MAERSK LABREA cambia ETA y ETD');
 
 $t = new Tablero($base, strtotime('2026-10-12 20:00:00'));
 verificar($t->estadoPorFechas(['etb' => '2026-10-12 13:00', 'etd' => '2026-10-13 08:00']) === 'Operando', 'entre ETB y ETS → Operando');
-verificar($t->estadoPorFechas(['etb' => '2026-10-13 11:00', 'etd' => '2026-10-14 11:00']) === 'Atraque confirmado', 'con ETB futura → Atraque confirmado');
+verificar($t->estadoPorFechas(['etb' => '2026-10-13 11:00', 'etd' => '2026-10-14 11:00']) === 'Esperado', 'con ETB futura → Esperado');
 verificar($t->estadoPorFechas(['etb' => '2026-10-10 13:00', 'etd' => '2026-10-11 02:00']) === 'Zarpado', 'después de ETS → Zarpado');
-verificar($t->estadoPorFechas(['etb' => null, 'etd' => null]) === 'Programado', 'sin ETB → Programado');
+verificar($t->estadoPorFechas(['etb' => null, 'etd' => null]) === 'Esperado', 'sin ETB → Esperado');
 $filasTcp = $t->filas($db2->query('SELECT * FROM escalas WHERE activa = 1')->fetchAll(), [], []);
 $artemissio = array_values(array_filter($filasTcp, fn($f) => $f['buque'] === 'CAP SAN ARTEMISSIO'))[0];
 verificar($artemissio['nivel'] === 'operando' && $artemissio['estados']['TCP'] === 'Operando', 'CAP SAN ARTEMISSIO operando el 12/10 20:00 → verde');
@@ -166,13 +166,17 @@ $buscar = function (string $buque, ?string $viaje = null) use ($filas) {
     return null;
 };
 verificar($buscar('XIAMEN EXPRESS')['estados']['MONTECON'] === 'Operando' && $buscar('XIAMEN EXPRESS')['nivel'] === 'operando', 'XIAMEN EXPRESS operando a las 12:30 → verde');
-verificar($buscar('MADELEINE I')['estados']['MONTECON'] === 'Programado', 'MADELEINE I antes de la llegada a rada → Programado');
-verificar($buscar('TIGER GAUCHO', '943N')['estados']['MONTECON'] === 'Programado', 'TIGER GAUCHO 943N → Programado');
+verificar($buscar('MADELEINE I')['estados']['MONTECON'] === 'Esperado', 'MADELEINE I antes de la llegada → Esperado');
+verificar($buscar('TIGER GAUCHO', '942N')['estados']['MONTECON'] === 'Esperado', 'TIGER GAUCHO 942N en rada → Esperado');
 verificar($buscar('ORION')['estados']['MONTECON'] === 'Cancelado' && $buscar('ORION')['nivel'] !== 'operando', 'ORION 014301/CANCEL → Cancelado');
 $inc = $buscar('INCANSABLE', '1326');
 verificar($inc !== null && array_keys($inc['terminales']) === ['TCP', 'MONTECON'], 'INCANSABLE figura en Montecon y TCP → una sola fila');
-$t2 = new Tablero($base, strtotime('2026-10-07 22:00:00'));
-verificar($t2->estadoPorFechas(['eta' => '2026-10-07 20:00', 'etb' => '2026-10-08 07:00', 'etd' => '2026-10-08 12:00'], ['con_etb' => 'Programado']) === 'En rada', 'entre llegada a rada y comienzo de operaciones → En rada');
+$estadosPosibles = ['Operando', 'Esperado', 'Cancelado', 'Zarpado'];
+$todos = [];
+foreach ($filas as $f) {
+    $todos = array_merge($todos, array_values($f['estados']));
+}
+verificar(array_diff($todos, $estadosPosibles) === [], 'solo se usan los estados Operando, Esperado, Cancelado y Zarpado');
 
 echo $fallas ? "\n$fallas prueba(s) fallaron\n" : "\nTodas las pruebas pasaron\n";
 exit($fallas ? 1 : 0);

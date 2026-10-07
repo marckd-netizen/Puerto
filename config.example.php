@@ -46,8 +46,8 @@ return [
                 'Accept'  => 'application/json, text/plain, */*',
             ],
             'color'  => '#1f6feb',
-            // TCP no publica estado: "Operando" entre ETB y ETS, "Zarpado" después de ETS,
-            // "En rada" entre ETA y ETB, "Atraque confirmado" si ya tiene ETB y si no "Programado".
+            // TCP no publica estado: "Esperado" antes de la ETB, "Operando" entre ETB y ETS
+            // y "Zarpado" después de ETS.
             'estado_por_fechas' => true,
             // TCP no publica número de viaje: se usa la semana de la escala.
             'formato' => ['viaje' => 'Sem. %s'],
@@ -75,9 +75,9 @@ return [
                 'Referer'      => 'https://online2.montecon.com.uy/',
             ],
             'color'  => '#d29922',
-            // Montecon no publica estado: se deduce de llegada a rada (ETA), comienzo de
-            // operaciones (ETB) y salida. Como siempre publica ETB, antes de la llegada es "Programado".
-            'estado_por_fechas' => ['con_etb' => 'Programado'],
+            // Montecon no publica estado: "Esperado" antes del comienzo de operaciones (ETB),
+            // "Operando" hasta la salida y "Zarpado" después.
+            'estado_por_fechas' => true,
             // Igual que la página de Montecon, no se muestran los marcados como ocultos.
             'excluir_si' => ['noMostrarSchedule' => true],
             'columnas' => [

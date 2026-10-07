@@ -59,9 +59,7 @@ Se usa la misma consulta que hace la página pública https://mitcp.katoennatie.
 con la `api-key` que esa página envía desde cualquier navegador. Devuelve JSON con
 `vessel`, `week`, `service`, `eta`, `etb`, `ets`, `notes`, entre otros datos.
 
-- TCP **no publica estado**. Se calcula a partir de las fechas: "En rada" entre ETA y ETB,
-  "Operando" entre ETB y ETS (fila verde) y "Zarpado" después de ETS. Antes de la ETA
-  queda "Atraque confirmado" si ya tiene ETB, o "Programado" si no la tiene.
+- TCP **no publica estado**. Se calcula a partir de las fechas (ver "Estados" más abajo).
 - TCP **no publica número de viaje**. Cada escala se identifica por buque + semana (`Sem. 41`).
 - La columna ETD de TCP muestra la **ETS** que publica la terminal.
 
@@ -80,11 +78,20 @@ Se usa la misma consulta que hace la página pública https://online2.montecon.c
 | `comienzoOperaciones` | ETB (inicio de operaciones) |
 | `salida`            | ETD           |
 
-- Montecon tampoco **publica estado**. Se calcula así: "Programado" antes de la llegada a rada,
-  "En rada" hasta el comienzo de operaciones, "Operando" (verde) hasta la salida y después "Zarpado".
+- Montecon tampoco **publica estado**. Se calcula a partir de las fechas (ver "Estados" más abajo).
 - Las fechas `0001-01-01` se toman como "sin dato".
 - Los viajes que terminan en `/CANCEL` se muestran como "Cancelado".
 - Los marcados `noMostrarSchedule` no se muestran, igual que en la página de Montecon.
+
+### Estados
+Ninguna de las dos terminales publica el estado, así que se calcula con las fechas:
+
+| Estado | Cuándo |
+|--------|--------|
+| **Esperado** | Antes de la ETB (inicio de operaciones) |
+| **Operando** | Entre la ETB y la ETD (fila verde) |
+| **Zarpado** | Después de la ETD |
+| **Cancelado** | El viaje termina en `/CANCEL` (Montecon) |
 
 ### Buques en las dos terminales
 Si un buque figura en TCP y en Montecon con fechas a menos de 7 días, aparece en una sola
@@ -107,7 +114,7 @@ Cada terminal se configura en `config.php`, en `terminales`:
 En los dos casos los nombres no distinguen mayúsculas ni tildes. Otras opciones de cada terminal:
 - `encabezados`: encabezados HTTP que se envían con la consulta.
 - `formato`: cómo se muestra un campo, por ejemplo `'Sem. %s'`.
-- `estado_por_fechas`: calcula el estado a partir de ETA, ETB y ETD. Se le pueden cambiar las etiquetas.
+- `estado_por_fechas`: calcula el estado a partir de ETB y ETD.
 - `cuerpo_post`: envía la consulta por POST con ese cuerpo.
 - `excluir_si`: descarta los elementos que tengan esa propiedad con ese valor.
 
