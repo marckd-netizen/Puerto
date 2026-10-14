@@ -1,0 +1,23 @@
+<?xml version = "1.0" encoding = "utf-8"?>
+<SOAP-ENV:Envelope xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:SOAP-ENC="http://schemas.xmlsoap.org/soap/encoding/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+	<SOAP-ENV:Body>
+		<WSDatCont.DATOSCONTResponse xmlns="LUCIAx">
+			<Mje xmlns="LUCIAx" />
+<Datoscont xmlns="LUCIAx">
+	<CONTENEDOR>MRSU6111179</CONTENEDOR>
+	<FECHAINI>2026-10-14</FECHAINI>
+	<FECHAFIN>2026-10-14</FECHAFIN>
+	<TIPODOCUMENTO />
+	<ANIO />
+	<NUMERO />
+	<DUAS />
+	<LINMANIF />
+	<MOVIMSTOCK />
+	<MS />
+	<INCAUTACIONES />
+	<MOVIMVIAJE />
+	<CONVALIDADA />
+</Datoscont>
+		</WSDatCont.DATOSCONTResponse>
+	</SOAP-ENV:Body>
+</SOAP-ENV:Envelope>

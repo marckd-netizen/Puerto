@@ -2,7 +2,13 @@
 declare(strict_types=1);
 
 /**
- * Cliente del webservice de Lucía (awsdatcont, GeneXus) usando el método DATOSCONT.
+ * Cliente del webservice de Lucía (awsdatcont, GeneXus).
+ * Por defecto usa DATOSCONTFECHAS con un rango amplio de fechas: DATOSCONT solo mira el día
+ * actual (la respuesta real trae FECHAINI = FECHAFIN = hoy).
+ *
+ * Respuesta real conocida (contenedor sin datos):
+ *   WSDatCont.*Response > Mje, Datoscont > CONTENEDOR, FECHAINI, FECHAFIN, TIPODOCUMENTO, ANIO,
+ *   NUMERO, DUAS, LINMANIF, MOVIMSTOCK, MS, INCAUTACIONES, MOVIMVIAJE, CONVALIDADA
  *
  * No se usa la extensión SOAP de PHP: el sobre se arma a mano y la respuesta se recorre
  * buscando el buque, el viaje y la fecha por nombre de elemento (configurable), porque
@@ -27,10 +33,48 @@ final class LuciaSoap implements ConsultaLucia
         }
     }
 
-    public function consultar(string $contenedor): ResultadoLucia
+    /** Secciones de Datoscont que traen información del contenedor (no los datos del pedido). */
+    private const SECCIONES = ['DUAS', 'LINMANIF', 'MOVIMSTOCK', 'MS', 'INCAUTACIONES', 'MOVIMVIAJE', 'CONVALIDADA'];
+
+    public function consultar(string $contenedor, ?int $ahora = null): ResultadoLucia
     {
-        $xml = $this->llamar($this->sobre($contenedor, $this->cfg['quedatos'] ?? 'LMF'));
+        $metodo = $this->metodo();
+        $sobre = $metodo === 'DATOSCONTFECHAS'
+            ? $this->sobreFechas($contenedor, ...$this->rango($ahora ?? time()))
+            : $this->sobre($contenedor, $this->cfg['quedatos'] ?? 'TOD');
+        $xml = $this->llamar($sobre, 'LUCIAxaction/AWSDATCONT.' . $metodo);
         return $this->interpretar($xml, $this->cfg['campos'] ?? []);
+    }
+
+    public function metodo(): string
+    {
+        return strtoupper($this->cfg['metodo'] ?? 'DATOSCONTFECHAS');
+    }
+
+    /** @return array{0: string, 1: string} fecha inicial y final (Y-m-d) */
+    public function rango(int $ahora): array
+    {
+        return [
+            date('Y-m-d', $ahora - (int) ($this->cfg['dias_atras'] ?? 60) * 86400),
+            date('Y-m-d', $ahora + (int) ($this->cfg['dias_adelante'] ?? 30) * 86400),
+        ];
+    }
+
+    public function sobreFechas(string $contenedor, string $desde, string $hasta): string
+    {
+        $c = htmlspecialchars($contenedor, ENT_XML1);
+        return <<<XML
+            <?xml version="1.0" encoding="utf-8"?>
+            <Envelope xmlns="http://schemas.xmlsoap.org/soap/envelope/">
+                <Body>
+                    <WSDatCont.DATOSCONTFECHAS xmlns="LUCIAx">
+                        <Fechainicial>$desde</Fechainicial>
+                        <Fechafinal>$hasta</Fechafinal>
+                        <Contenedor>$c</Contenedor>
+                    </WSDatCont.DATOSCONTFECHAS>
+                </Body>
+            </Envelope>
+            XML;
     }
 
     public function sobre(string $contenedor, string $quedatos): string
@@ -50,7 +94,7 @@ final class LuciaSoap implements ConsultaLucia
             XML;
     }
 
-    private function llamar(string $sobre): string
+    private function llamar(string $sobre, string $accion): string
     {
         // La dirección del servicio es la del WSDL sin "?wsdl".
         $url = preg_replace('/\?wsdl$/i', '', $this->cfg['url']);
@@ -64,7 +108,7 @@ final class LuciaSoap implements ConsultaLucia
             CURLOPT_TIMEOUT        => $this->cfg['timeout'] ?? 30,
             CURLOPT_HTTPHEADER     => [
                 'Content-Type: text/xml; charset=utf-8',
-                'SOAPAction: "' . ($this->cfg['soap_action'] ?? 'LUCIAxaction/AWSDATCONT.DATOSCONT') . '"',
+                'SOAPAction: "' . $accion . '"',
             ],
         ];
         if (($this->cfg['autenticacion'] ?? 'basic') === 'basic' && ($this->cfg['usuario'] ?? '') !== '') {
@@ -114,10 +158,18 @@ final class LuciaSoap implements ConsultaLucia
             $alias[$campo] = array_map('strtolower', array_merge($campos[$campo] ?? [], $lista));
         }
 
+        $mensaje = self::buscarClave($datos, ['Mje']);
+        $mensaje = is_string($mensaje) && $mensaje !== '' ? $mensaje : null;
+
         $registros = [];
         self::registrosConBuque($datos, $alias['buque'], $registros);
         if (!$registros) {
-            return new ResultadoLucia(false, detalle: $datos);
+            // Sin buque: igual cuenta como encontrado si alguna sección trae datos.
+            $conDatos = array_values(array_filter(self::SECCIONES, function ($sec) use ($datos) {
+                $v = self::buscarClave($datos, [$sec]);
+                return $v !== null && $v !== '' && $v !== [];
+            }));
+            return new ResultadoLucia((bool) $conDatos, detalle: ['secciones_con_datos' => $conDatos, 'mensaje' => $mensaje, 'respuesta' => $datos]);
         }
 
         $mejor = null;

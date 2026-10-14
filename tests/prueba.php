@@ -240,8 +240,14 @@ $sobre = $soap->sobre('CSQU3054383', 'LMF');
 verificar(str_contains($sobre, '<WSDatCont.DATOSCONT xmlns="LUCIAx">') && str_contains($sobre, '<Contenedor>CSQU3054383</Contenedor>') && str_contains($sobre, '<Quedatos>LMF</Quedatos>'), 'arma el sobre SOAP de DATOSCONT');
 $r = $soap->interpretar(file_get_contents(__DIR__ . '/fixtures/lucia_respuesta_supuesta.xml'));
 verificar($r->encontrado && $r->buque === 'CAP SAN ARTEMISSIO' && $r->viaje === '641W' && $r->fecha === '2026-10-12 11:00', 'extrae buque, viaje y fecha (el registro más reciente de dos)');
-$vacia = $soap->interpretar('<Envelope xmlns="http://schemas.xmlsoap.org/soap/envelope/"><Body><WSDatCont.DATOSCONTResponse xmlns="LUCIAx"><Sdtdatoscont/></WSDatCont.DATOSCONTResponse></Body></Envelope>');
-verificar(!$vacia->encontrado, 'respuesta vacía → no encontrado');
+$vacia = $soap->interpretar(file_get_contents(__DIR__ . '/fixtures/lucia_respuesta_vacia_real.xml'));
+verificar(!$vacia->encontrado, 'respuesta real sin datos (todas las secciones vacías) → no encontrado');
+$sinBuque = $soap->interpretar(str_replace('<DUAS />', '<DUAS><DUA><Anio>2026</Anio><Numero>123456</Numero></DUA></DUAS>', file_get_contents(__DIR__ . '/fixtures/lucia_respuesta_vacia_real.xml')));
+verificar($sinBuque->encontrado && $sinBuque->buque === null && $sinBuque->detalle['secciones_con_datos'] === ['DUAS'], 'con datos pero sin buque → encontrado, sin buque, indicando la sección');
+verificar($soap->metodo() === 'DATOSCONTFECHAS', 'por defecto usa DATOSCONTFECHAS');
+verificar($soap->rango(strtotime('2026-10-14 12:00')) === ['2026-08-15', '2026-11-13'], 'rango por defecto: 60 días atrás y 30 adelante');
+$sobreF = $soap->sobreFechas('MRSU6111179', '2026-08-15', '2026-11-13');
+verificar(str_contains($sobreF, '<WSDatCont.DATOSCONTFECHAS xmlns="LUCIAx">') && str_contains($sobreF, '<Fechainicial>2026-08-15</Fechainicial>') && str_contains($sobreF, '<Fechafinal>2026-11-13</Fechafinal>'), 'arma el sobre de DATOSCONTFECHAS');
 $otros = $soap->interpretar('<Envelope><Body><R><Item><NomBarco>MSC ADELE</NomBarco><NroVje>NA646R</NroVje></Item></R></Body></Envelope>', ['buque' => ['NomBarco'], 'viaje' => ['NroVje']]);
 verificar($otros->buque === 'MSC ADELE' && $otros->viaje === 'NA646R', 'acepta nombres de elementos configurados');
 try {
@@ -265,7 +271,7 @@ for ($i = 0; $i < 50 && !@fsockopen('127.0.0.1', $puerto); $i++) {
 }
 try {
     $url = "http://127.0.0.1:$puerto/index.php?wsdl";
-    $real = new LuciaSoap(['url' => $url, 'usuario' => 'usuario-prueba', 'clave' => 'clave-prueba', 'quedatos' => 'LMF']);
+    $real = new LuciaSoap(['url' => $url, 'usuario' => 'usuario-prueba', 'clave' => 'clave-prueba']);
     $r = $real->consultar('CSQU3054383');
     verificar($r->encontrado && $r->buque === 'CAP SAN ARTEMISSIO', 'consulta por la red con usuario y contraseña');
     verificar(!$real->consultar('MSKU9070323')->encontrado, 'contenedor sin datos → no encontrado');

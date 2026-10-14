@@ -51,33 +51,39 @@ ocurrido hasta 2 horas antes.
 - Cuando un contenedor ya no interesa se **archiva**: deja de consultarse y de mostrarse.
 
 ### Webservice de Lucía
-Se usa `awsdatcont.aspx`, método **DATOSCONT**, con `Quedatos = LMF`: líneas de manifiesto de
-ingreso con ese contenedor que todavía no ingresaron a stock, o sea contenedores que vienen en un
-barco. Se puede cambiar a `TOD` en `config.php`.
+Se usa `awsdatcont.aspx`, método **DATOSCONTFECHAS**, con un rango de fechas amplio:
+por defecto, de 60 días atrás a 30 días adelante (`dias_atras` y `dias_adelante` en `config.php`).
+Devuelve DUAs, líneas de manifiesto, movimientos de stock, mensajes simplificados, movimientos
+de viaje y convalidadas del contenedor en ese período. El método `DATOSCONT` también está
+disponible, pero solo mira el día actual.
+
+Lo confirmado con el servicio real: la autenticación HTTP básica con usuario y clave funciona,
+y la respuesta trae `Datoscont` con las secciones `DUAS`, `LINMANIF`, `MOVIMSTOCK`, `MS`,
+`INCAUTACIONES`, `MOVIMVIAJE` y `CONVALIDADA`. **Falta ver una respuesta con datos** para saber
+en qué elemento viene el buque.
 
 Dirección: `https://servicios.aduanas.gub.uy/luciaws/awsdatcont.aspx?wsdl`. Si la Aduana
 habilita el acceso solo desde ciertas direcciones IP, la del servidor del sitio tiene que estar habilitada.
 
-**Prueba rápida sin PHP (Windows 10 u 11):** doble clic en
-`herramientas/lucia_prueba.bat`. Baja la descripción del servicio (`wsdl.xml`), pide el
-contenedor y el usuario (curl pide la clave sin mostrarla) y guarda la respuesta en
-`respuesta.xml`, en la misma carpeta.
+**Prueba rápida sin PHP (Windows 10 u 11):** copiar `herramientas/lucia_prueba.bat` y
+`herramientas/lucia_prueba.ps1` en la misma carpeta y hacer doble clic en el `.bat`. Pide el
+contenedor, el rango de días, el usuario y la clave (una sola vez, sin mostrarla) y guarda en esa
+carpeta `wsdl.xml`, `respuesta_datoscont.xml` y `respuesta_fechas.xml`.
 
 **Primera prueba con el sitio instalado:**
 1. En `config.php` → `lucia`: `'modo' => 'soap'`, `usuario` y `clave`. **Solo en el servidor**, nunca en el repositorio.
 2. Con un contenedor que venga en un barco próximo:
    ```bash
-   php cron/lucia_diagnostico.php MSKU1234567
-   php cron/lucia_diagnostico.php MSKU1234567 TOD
+   php cron/lucia_diagnostico.php MSKU1234567        # DATOSCONTFECHAS
+   php cron/lucia_diagnostico.php MSKU1234567 TOD    # DATOSCONT con Quedatos = TOD
    ```
    Muestra el pedido, la respuesta completa y qué buque, viaje y fecha entendió el sistema.
 3. Si no encuentra el buque, agregá en `config.php` → `lucia` → `campos` los nombres de los
    elementos de la respuesta. Por ejemplo, `'buque' => ['NomBuque']`.
 
 Posibles errores en la primera prueba:
-- **"Lucía rechazó el usuario o la contraseña (HTTP 401)":** puede que Lucía no use autenticación
-  HTTP básica, sino que pida las credenciales de otra forma (por ejemplo, dentro del mensaje).
-  Hay que verlo con la respuesta.
+- **"Lucía rechazó el usuario o la contraseña (HTTP 401)":** revisar usuario y clave
+  (la autenticación HTTP básica ya se confirmó con el servicio real).
 - **Error de certificado:** si Lucía usa un certificado de una autoridad interna, poné la ruta
   del `.pem` en `ca_bundle`.
 

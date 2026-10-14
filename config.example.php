@@ -34,10 +34,12 @@ return [
         // 'pendiente': sin configurar.
         'modo'    => 'pendiente',
         'url'     => 'https://servicios.aduanas.gub.uy/luciaws/awsdatcont.aspx?wsdl',
-        // Qué datos pedir (método DATOSCONT). LMF: líneas de manifiesto de ingreso aún no
-        // ingresadas a stock, o sea contenedores que vienen en un barco. TOD: todos.
-        'quedatos' => 'LMF',
-        'soap_action' => 'LUCIAxaction/AWSDATCONT.DATOSCONT',
+        // Método: DATOSCONTFECHAS (rango de fechas, recomendado) o DATOSCONT (solo mira el día actual).
+        'metodo'        => 'DATOSCONTFECHAS',
+        'dias_atras'    => 60,
+        'dias_adelante' => 30,
+        // Solo para DATOSCONT: LMF, DUA, STK, MSL, MSI o TOD.
+        'quedatos'      => 'TOD',
         // Credenciales: SOLO en config.php del servidor, nunca en el repositorio.
         'autenticacion' => 'basic',
         'usuario'  => '',

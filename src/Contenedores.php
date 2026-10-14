@@ -236,7 +236,11 @@ final class Contenedores
                 lucia_fecha = ?, lucia_mensaje = ?, lucia_detalle = ?, escala_id = ?, vinculado = ? WHERE id = ?")
             ->execute([
                 $cuando, $r->buque, $r->viaje, $r->fecha,
-                $escalaId === null ? "El buque {$r->buque} no figura en el tablero" : null,
+                match (true) {
+                    $escalaId !== null => null,
+                    $r->buque === null => 'Lucía tiene datos del contenedor (' . implode(', ', $r->detalle['secciones_con_datos'] ?? []) . ') pero no informa el buque',
+                    default => "El buque {$r->buque} no figura en el tablero",
+                },
                 json_encode($r->detalle, JSON_UNESCAPED_UNICODE),
                 $escalaId,
                 $escalaId === null ? null : ($mismaEscala ? $c['vinculado'] : $cuando),

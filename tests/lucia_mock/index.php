@@ -6,8 +6,11 @@ if (($_SERVER['PHP_AUTH_USER'] ?? '') !== 'usuario-prueba' || ($_SERVER['PHP_AUT
 }
 $pedido = file_get_contents('php://input');
 header('Content-Type: text/xml; charset=utf-8');
-if (!str_contains($pedido, '<Contenedor>CSQU3054383</Contenedor>') || !str_contains($pedido, '<Quedatos>LMF</Quedatos>')) {
-    echo '<Envelope xmlns="http://schemas.xmlsoap.org/soap/envelope/"><Body><WSDatCont.DATOSCONTResponse xmlns="LUCIAx"><Sdtdatoscont/></WSDatCont.DATOSCONTResponse></Body></Envelope>';
+$fechas = str_contains($pedido, '<WSDatCont.DATOSCONTFECHAS') && str_contains($_SERVER['HTTP_SOAPACTION'] ?? '', 'DATOSCONTFECHAS')
+    && preg_match('#<Fechainicial>\d{4}-\d{2}-\d{2}</Fechainicial>#', $pedido);
+if (!$fechas || !str_contains($pedido, '<Contenedor>CSQU3054383</Contenedor>')) {
+    // Igual que la respuesta real para un contenedor sin datos
+    readfile(dirname(__DIR__) . '/fixtures/lucia_respuesta_vacia_real.xml');
     exit;
 }
 readfile(dirname(__DIR__) . '/fixtures/lucia_respuesta_supuesta.xml');
