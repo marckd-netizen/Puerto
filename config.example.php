@@ -33,7 +33,7 @@ return [
         // 'soap': webservice real. 'archivo': simulación con un JSON (para pruebas).
         // 'pendiente': sin configurar.
         'modo'    => 'pendiente',
-        'url'     => 'https://lucia.srv-luciatmgx16/Luciaws/awsdatcont.aspx?wsdl',
+        'url'     => 'https://servicios.aduanas.gub.uy/luciaws/awsdatcont.aspx?wsdl',
         // Qué datos pedir (método DATOSCONT). LMF: líneas de manifiesto de ingreso aún no
         // ingresadas a stock, o sea contenedores que vienen en un barco. TOD: todos.
         'quedatos' => 'LMF',

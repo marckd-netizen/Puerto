@@ -55,10 +55,10 @@ Se usa `awsdatcont.aspx`, método **DATOSCONT**, con `Quedatos = LMF`: líneas d
 ingreso con ese contenedor que todavía no ingresaron a stock, o sea contenedores que vienen en un
 barco. Se puede cambiar a `TOD` en `config.php`.
 
-La dirección `lucia.srv-luciatmgx16` es de la red interna de la Aduana: el servidor del sitio
-tiene que poder llegar a ella (red de la Aduana o VPN).
+Dirección: `https://servicios.aduanas.gub.uy/luciaws/awsdatcont.aspx?wsdl`. Si la Aduana
+habilita el acceso solo desde ciertas direcciones IP, la del servidor del sitio tiene que estar habilitada.
 
-**Prueba rápida sin PHP (Windows 10 u 11):** en una PC que entre a Lucía, doble clic en
+**Prueba rápida sin PHP (Windows 10 u 11):** doble clic en
 `herramientas/lucia_prueba.bat`. Baja la descripción del servicio (`wsdl.xml`), pide el
 contenedor y el usuario (curl pide la clave sin mostrarla) y guarda la respuesta en
 `respuesta.xml`, en la misma carpeta.

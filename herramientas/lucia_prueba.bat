@@ -8,7 +8,7 @@ rem    respuesta.xml  lo que contesto Lucia (puede tener datos de clientes)
 rem ==========================================================================
 setlocal
 cd /d "%~dp0"
-set "URL=https://lucia.srv-luciatmgx16/Luciaws/awsdatcont.aspx"
+set "URL=https://servicios.aduanas.gub.uy/luciaws/awsdatcont.aspx"
 
 where curl.exe >nul 2>nul
 if errorlevel 1 (
