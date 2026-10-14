@@ -58,7 +58,12 @@ barco. Se puede cambiar a `TOD` en `config.php`.
 La dirección `lucia.srv-luciatmgx16` es de la red interna de la Aduana: el servidor del sitio
 tiene que poder llegar a ella (red de la Aduana o VPN).
 
-**Primera prueba (no se sabe todavía qué devuelve):**
+**Prueba rápida sin PHP (Windows 10 u 11):** en una PC que entre a Lucía, doble clic en
+`herramientas/lucia_prueba.bat`. Baja la descripción del servicio (`wsdl.xml`), pide el
+contenedor y el usuario (curl pide la clave sin mostrarla) y guarda la respuesta en
+`respuesta.xml`, en la misma carpeta.
+
+**Primera prueba con el sitio instalado:**
 1. En `config.php` → `lucia`: `'modo' => 'soap'`, `usuario` y `clave`. **Solo en el servidor**, nunca en el repositorio.
 2. Con un contenedor que venga en un barco próximo:
    ```bash
@@ -91,7 +96,8 @@ El script pide la contraseña y muestra la línea que hay que agregar en `config
 
 ## Instalación
 
-1. Requisitos: PHP 8.1 o superior con las extensiones `pdo_mysql`, `curl`, `dom` y `mbstring`, y MySQL o MariaDB.
+1. Requisitos: PHP 8.1 o superior con las extensiones `pdo_mysql`, `curl`, `dom` y `mbstring`, y MySQL 5.7+ o MariaDB 10.3+.
+   En Windows sirve XAMPP con PHP 8.2 o AppServ 9.x. **Las versiones viejas de AppServ (2.x) no sirven:** traen PHP 5.
 2. Crear la base de datos y cargar el esquema:
    ```sql
    CREATE DATABASE puerto CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
