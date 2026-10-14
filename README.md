@@ -28,11 +28,44 @@ operativa prevista** (ETA, ETD, estado y servicio).
   De entrada se ocultan CRUCERO y CIENTIFICO (lista `servicios_ocultos` en `config.php`).
   Lo que elija cada usuario queda guardado en su navegador. Si un buque está en las dos
   terminales con servicios distintos, solo se oculta cuando se ocultan los dos.
+- `contenedores.php` y `clientes.php`: seguimiento de contenedores propios (ver abajo).
 - `historial.php`: todos los cambios de los últimos días, o el historial completo de un buque.
 
 Los cambios se detectan en cada lectura, así que la hora del cambio es la de la
 lectura en que se vio. Con lecturas cada 2 horas, el cambio real pudo haber
 ocurrido hasta 2 horas antes.
+
+## Clientes y contenedores (Lucía)
+
+- **Clientes** (`clientes.php`): RUT (12 dígitos) y nombre. Se cargan de a uno o pegando desde Excel.
+- **Contenedores** (`contenedores.php`): número (formato AAAAnnnnnnn), carpeta y cliente. También
+  se pueden pegar desde Excel (Contenedor · Carpeta · RUT). Se valida el formato y se avisa si el
+  dígito verificador del contenedor (ISO 6346) o del RUT no coincide.
+- `cron/contenedores.php` consulta cada contenedor activo en el webservice de Lucía. Si Lucía
+  informa el buque, el contenedor se **vincula con la escala** de ese buque en el tablero:
+  1. la escala con el mismo número de viaje;
+  2. si no hay coincidencia de viaje, la de ETA más cercana a la fecha que informa Lucía;
+  3. si Lucía no da fecha, la más próxima a hoy que no haya zarpado.
+- En el tablero, cada buque muestra sus contenedores (📦) con carpeta y cliente. Hay un filtro
+  "Solo con contenedores míos". Un buque con contenedores propios nunca se oculta por servicio.
+- Cuando un contenedor ya no interesa se **archiva**: deja de consultarse y de mostrarse.
+
+**Estado de la integración con Lucía:** pendiente. Falta conocer el webservice (dirección,
+método, parámetros y un ejemplo de respuesta). Mientras tanto se puede probar con
+`'lucia' => ['modo' => 'archivo']`, que usa respuestas simuladas de
+`tests/fixtures/lucia_simulada.json`. **El usuario y la contraseña de Lucía van solo en el
+`config.php` del servidor**, nunca en el repositorio.
+
+## Acceso
+
+Como el sitio guarda datos de clientes, todas las páginas piden usuario y contraseña.
+Para crear un usuario:
+
+```bash
+php cron/crear_usuario.php marcelo
+```
+
+El script pide la contraseña y muestra la línea que hay que agregar en `config.php`, dentro de `'usuarios'`.
 
 ## Instalación
 
@@ -46,12 +79,15 @@ ocurrido hasta 2 horas antes.
    ```bash
    mysql -u puerto -p puerto < sql/schema.mysql.sql
    ```
+   Si el sitio ya estaba instalado, se vuelve a ejecutar el mismo comando: crea solo las tablas nuevas
+   (clientes y contenedores) y no toca las existentes.
 3. `cp config.example.php config.php` y completar los datos de la base.
 4. Apuntar el servidor web a la carpeta `public/`. Solo esa carpeta debe quedar
    accesible desde internet.
-5. Programar la lectura con cron:
+5. Crear al menos un usuario (ver "Acceso").
+6. Programar la lectura con cron, cada 2 horas: primero las terminales y después Lucía.
    ```
-   0 */2 * * * php /ruta/a/Puerto/cron/actualizar.php >> /ruta/a/Puerto/data/cron.log 2>&1
+   0 */2 * * * php /ruta/a/Puerto/cron/actualizar.php >> /ruta/a/Puerto/data/cron.log 2>&1; php /ruta/a/Puerto/cron/contenedores.php >> /ruta/a/Puerto/data/cron.log 2>&1
    ```
    Para probar a mano: `php cron/actualizar.php` (o `php cron/actualizar.php TCP` para una sola terminal).
 

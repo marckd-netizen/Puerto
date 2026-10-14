@@ -22,6 +22,29 @@ return [
     'horas_cambio_reciente' => 2,
     'horas_destacado' => 24,
 
+    // Acceso al sitio. Generar cada usuario con: php cron/crear_usuario.php nombre
+    'requiere_login' => true,
+    'usuarios' => [
+        // 'marcelo' => '$2y$10$...',
+    ],
+
+    // Consulta de contenedores en Lucía (Aduana).
+    'lucia' => [
+        // 'pendiente': todavía no configurado.
+        // 'archivo': simulación con un JSON (para pruebas), ver tests/fixtures/lucia_simulada.json.
+        'modo'    => 'pendiente',
+        'archivo' => __DIR__ . '/tests/fixtures/lucia_simulada.json',
+        // Credenciales del webservice: SOLO en config.php del servidor, nunca en el repositorio.
+        'url'      => '',
+        'usuario'  => '',
+        'clave'    => '',
+        // Cada cuántas horas se vuelve a consultar un mismo contenedor.
+        'reconsultar_horas' => 2,
+        // Pausa entre consultas para no saturar el servicio.
+        'pausa_segundos'    => 1,
+        'max_por_ejecucion' => 200,
+    ],
+
     // Servicios que no se muestran de entrada (cada usuario puede cambiarlo desde la página).
     'servicios_ocultos' => ['CRUCERO', 'CIENTIFICO'],
 

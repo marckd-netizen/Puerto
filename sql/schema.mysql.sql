@@ -44,3 +44,34 @@ CREATE TABLE IF NOT EXISTS lecturas (
     mensaje   VARCHAR(500) NULL,
     KEY idx_terminal_fecha (terminal, fecha)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Clientes y contenedores (seguimiento con Lucía)
+CREATE TABLE IF NOT EXISTS clientes (
+    id      INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    rut     VARCHAR(12)  NOT NULL,
+    nombre  VARCHAR(150) NOT NULL,
+    creado  DATETIME     NOT NULL,
+    UNIQUE KEY uk_rut (rut)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS contenedores (
+    id              INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    numero          CHAR(11)     NOT NULL,
+    carpeta         VARCHAR(30)  NOT NULL,
+    cliente_id      INT UNSIGNED NULL,
+    activo          TINYINT(1)   NOT NULL DEFAULT 1,
+    creado          DATETIME     NOT NULL,
+    lucia_estado    VARCHAR(20)  NOT NULL DEFAULT 'pendiente',
+    lucia_consulta  DATETIME     NULL,
+    lucia_buque     VARCHAR(150) NULL,
+    lucia_viaje     VARCHAR(60)  NULL,
+    lucia_fecha     VARCHAR(30)  NULL,
+    lucia_mensaje   VARCHAR(255) NULL,
+    lucia_detalle   TEXT         NULL,
+    escala_id       INT UNSIGNED NULL,
+    vinculado       DATETIME     NULL,
+    UNIQUE KEY uk_numero_carpeta (numero, carpeta),
+    KEY idx_escala (escala_id),
+    CONSTRAINT fk_contenedores_cliente FOREIGN KEY (cliente_id) REFERENCES clientes (id) ON DELETE SET NULL,
+    CONSTRAINT fk_contenedores_escala FOREIGN KEY (escala_id) REFERENCES escalas (id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

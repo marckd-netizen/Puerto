@@ -5,6 +5,7 @@ require dirname(__DIR__) . '/src/bootstrap.php';
 require dirname(__DIR__) . '/src/vistas.php';
 
 $cfg = config();
+Acceso::exigir($cfg);
 $db = Db::conectar($cfg['db']);
 
 $escalaId = (int) ($_GET['escala'] ?? 0);

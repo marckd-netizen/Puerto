@@ -188,5 +188,51 @@ verificar(!Tablero::ocultaPorServicio($inc, ['FLUVIAL']), 'INCANSABLE (FLUVIAL /
 verificar(Tablero::ocultaPorServicio($inc, ['FLUVIAL', 'Paraguay Feeder']), 'INCANSABLE se oculta si se ocultan sus dos servicios');
 verificar(!Tablero::ocultaPorServicio(['servicios' => []], $ocultos), 'un buque sin servicio nunca se oculta');
 
+echo "Validaciones\n";
+verificar(Validacion::normalizarContenedor(' csqu 305438-3 ') === 'CSQU3054383', 'contenedor: se normaliza "csqu 305438-3"');
+verificar(Validacion::digitoContenedorCorrecto('CSQU3054383'), 'contenedor: dígito verificador correcto (ejemplo ISO 6346)');
+verificar(!Validacion::digitoContenedorCorrecto('CSQU3054384'), 'contenedor: detecta dígito verificador incorrecto');
+verificar(!Validacion::formatoContenedor('CSQ3054383') && !Validacion::formatoContenedor('CSQU305438'), 'contenedor: rechaza formatos que no son AAAAnnnnnnn');
+$rutBase = '21123456001';
+$sumaRut = 0;
+foreach ([4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2] as $i => $peso) {
+    $sumaRut += (int) $rutBase[$i] * $peso;
+}
+$rutOk = $rutBase . ((11 - $sumaRut % 11) % 11);
+verificar(Validacion::digitoRutCorrecto($rutOk), "RUT: dígito verificador correcto ($rutOk)");
+verificar(Validacion::normalizarRut('21.123.456-0012') === '211234560012' && !Validacion::formatoRut('12345'), 'RUT: normaliza y exige 12 dígitos');
+
+echo "Clientes y contenedores\n";
+$cont = new Contenedores($db3);
+$r = $cont->importarClientes("RUT\tNombre\n$rutOk\tEMPRESA EJEMPLO S.A.\n210000000019\tOTRO CLIENTE SRL\n123\tMAL RUT\n");
+verificar($r['ok'] === 2 && count($r['errores']) === 1, 'importa 2 clientes desde Excel (ignora encabezado y rechaza RUT inválido)');
+$r = $cont->importarClientes("$rutOk;EMPRESA EJEMPLO SOCIEDAD ANONIMA");
+verificar($r['ok'] === 1 && $db3->query("SELECT nombre FROM clientes WHERE rut = '$rutOk'")->fetchColumn() === 'EMPRESA EJEMPLO SOCIEDAD ANONIMA', 'reimportar un RUT actualiza el nombre (separador ;)');
+$r = $cont->importarContenedores("Contenedor\tCarpeta\tRUT\nCSQU3054383\t2026-001\t$rutOk\nmsku 907032-3\t2026-002\t$rutOk\nTGHU8785330\t2026-003\nMSCU1234565\t2026-004\t210000000019\nABC123\t2026-005\nCSQU3054383\t2026-006\t999999999999\n");
+verificar($r['ok'] === 4 && count($r['errores']) === 2, 'importa 4 contenedores; rechaza formato inválido y cliente inexistente');
+verificar(count($r['avisos']) === 1 && str_contains($r['avisos'][0], 'MSCU1234565'), 'avisa el dígito verificador incorrecto de MSCU1234565');
+$r = $cont->guardarContenedor('CSQU3054383', '2026-001', $rutOk);
+verificar($r['ok'] && (int) $db3->query('SELECT COUNT(*) FROM contenedores')->fetchColumn() === 4, 'el mismo contenedor y carpeta no se duplica');
+
+echo "Lucía y vinculación con buques\n";
+$ahoraLucia = strtotime('2026-10-07 12:30:00');
+$noConf = $cont->consultarPendientes(new LuciaNoConfigurada(), ['pausa_segundos' => 0], $ahoraLucia);
+verificar($noConf['consultados'] === 1 && count($noConf['errores']) === 1, 'sin configurar: se detiene en el primer contenedor con un error claro');
+$db3->exec('UPDATE contenedores SET lucia_consulta = NULL, lucia_estado = \'pendiente\'');
+$lucia = new LuciaArchivo(__DIR__ . '/fixtures/lucia_simulada.json');
+$r = $cont->consultarPendientes($lucia, ['pausa_segundos' => 0, 'reconsultar_horas' => 2], $ahoraLucia);
+verificar($r['consultados'] === 4 && $r['encontrados'] === 4 && $r['vinculados'] === 3, 'consulta 4: los 4 están en Lucía y 3 se vinculan a un buque');
+$vinc = $db3->query('SELECT c.numero, e.terminal, e.buque, e.viaje FROM contenedores c LEFT JOIN escalas e ON e.id = c.escala_id ORDER BY c.numero')->fetchAll(PDO::FETCH_UNIQUE);
+verificar(($vinc['CSQU3054383']['buque'] ?? '') === 'XIAMEN EXPRESS', 'CSQU3054383 → XIAMEN EXPRESS (mismo viaje)');
+verificar(($vinc['TGHU8785330']['viaje'] ?? '') === '943N', 'TGHU8785330 → TIGER GAUCHO viaje 943N, no el 942N');
+verificar(($vinc['MSKU9070323']['buque'] ?? '') === 'INCANSABLE' && $vinc['MSKU9070323']['viaje'] === 'Sem. 41', 'MSKU9070323 → INCANSABLE de la escala con ETA más cercana a la fecha de Lucía (TCP, semana 41)');
+verificar($vinc['MSCU1234565']['buque'] === null && str_contains((string) $db3->query("SELECT lucia_mensaje FROM contenedores WHERE numero = 'MSCU1234565'")->fetchColumn(), 'no figura'), 'MSCU1234565: buque desconocido queda sin vincular, con aviso');
+$r = $cont->consultarPendientes($lucia, ['pausa_segundos' => 0, 'reconsultar_horas' => 2], $ahoraLucia + 3600);
+verificar($r['consultados'] === 0, 'no se vuelve a consultar antes de 2 horas');
+$r = $cont->consultarPendientes($lucia, ['pausa_segundos' => 0, 'reconsultar_horas' => 2], $ahoraLucia + 2 * 3600);
+verificar($r['consultados'] === 4, 'a las 2 horas se vuelven a consultar');
+$porEscala = $cont->porEscala();
+verificar(array_sum(array_map('count', $porEscala)) === 3, 'el tablero recibe los 3 contenedores vinculados, agrupados por escala');
+
 echo $fallas ? "\n$fallas prueba(s) fallaron\n" : "\nTodas las pruebas pasaron\n";
 exit($fallas ? 1 : 0);

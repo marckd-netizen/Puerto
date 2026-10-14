@@ -12,15 +12,13 @@ final class Db
 
         if (($cfg['driver'] ?? 'mysql') === 'sqlite') {
             $ruta = $cfg['sqlite_path'];
-            $nueva = $ruta === ':memory:' || !is_file($ruta);
             if ($ruta !== ':memory:' && !is_dir(dirname($ruta))) {
                 mkdir(dirname($ruta), 0775, true);
             }
             $pdo = new PDO('sqlite:' . $ruta, null, null, $opciones);
             $pdo->exec('PRAGMA foreign_keys = ON');
-            if ($nueva) {
-                $pdo->exec(file_get_contents(dirname(__DIR__) . '/sql/schema.sqlite.sql'));
-            }
+            // Todo el esquema usa IF NOT EXISTS: aplicarlo siempre suma las tablas nuevas a bases existentes.
+            $pdo->exec(file_get_contents(dirname(__DIR__) . '/sql/schema.sqlite.sql'));
             return $pdo;
         }
 

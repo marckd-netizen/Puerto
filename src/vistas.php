@@ -7,7 +7,7 @@ const ETIQUETAS = [
     'servicio' => 'Servicio', 'operativa' => 'Operativa', 'estado' => 'Estado', 'cierre' => 'Cierre',
 ];
 
-function encabezado(string $titulo, int $refresh = 0): void
+function encabezado(string $titulo, int $refresh = 0, bool $menu = true): void
 {
     ?><!doctype html>
 <html lang="es">
@@ -21,7 +21,12 @@ function encabezado(string $titulo, int $refresh = 0): void
 <body>
 <header>
     <h1>⚓ Arribos Puerto de Montevideo</h1>
-    <nav><a href="index.php">Arribos</a><a href="historial.php">Historial de cambios</a></nav>
+    <?php if ($menu): ?>
+    <nav>
+        <a href="index.php">Arribos</a><a href="contenedores.php">Contenedores</a><a href="clientes.php">Clientes</a><a href="historial.php">Historial de cambios</a>
+        <?php if (Acceso::usuario()): ?><span class="usuario"><?= e(Acceso::usuario()) ?> · <a href="salir.php">Salir</a></span><?php endif; ?>
+    </nav>
+    <?php endif; ?>
 </header>
 <main>
 <?php
@@ -69,4 +74,37 @@ function valorConCambio(string $campo, array $escala, array $recientes): string
         return '<span class="antes">' . $antes . '</span><strong>' . $html . '</strong>';
     }
     return $html;
+}
+
+/** Mensajes que sobreviven a una redirección (después de guardar un formulario). */
+function avisar(string $tipo, string $mensaje): void
+{
+    $_SESSION['avisos'][] = [$tipo, $mensaje];
+}
+
+function mostrarAvisos(): void
+{
+    foreach ($_SESSION['avisos'] ?? [] as [$tipo, $mensaje]) {
+        echo '<p class="aviso aviso-' . e($tipo) . '">' . nl2br(e($mensaje)) . "</p>\n";
+    }
+    unset($_SESSION['avisos']);
+}
+
+/** Resultado de una importación como avisos. */
+function avisarImportacion(array $r, string $que): void
+{
+    avisar($r['ok'] ? 'ok' : 'error', "$que importados: {$r['ok']}");
+    if ($r['avisos']) {
+        avisar('atencion', implode("\n", $r['avisos']));
+    }
+    if ($r['errores']) {
+        avisar('error', count($r['errores']) . " con errores:\n" . implode("\n", array_slice($r['errores'], 0, 30))
+            . (count($r['errores']) > 30 ? "\n…" : ''));
+    }
+}
+
+function volverA(string $pagina): never
+{
+    header('Location: ' . $pagina);
+    exit;
 }

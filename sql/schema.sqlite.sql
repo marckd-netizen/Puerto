@@ -40,3 +40,30 @@ CREATE TABLE IF NOT EXISTS lecturas (
     filas     INT          NOT NULL DEFAULT 0,
     mensaje   VARCHAR(500) NULL
 );
+
+-- Clientes y contenedores (seguimiento con Lucía)
+CREATE TABLE IF NOT EXISTS clientes (
+    id      INTEGER PRIMARY KEY AUTOINCREMENT,
+    rut     VARCHAR(12)  NOT NULL UNIQUE,
+    nombre  VARCHAR(150) NOT NULL,
+    creado  DATETIME     NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS contenedores (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    numero          CHAR(11)     NOT NULL,
+    carpeta         VARCHAR(30)  NOT NULL,
+    cliente_id      INTEGER NULL REFERENCES clientes (id) ON DELETE SET NULL,
+    activo          TINYINT(1)   NOT NULL DEFAULT 1,
+    creado          DATETIME     NOT NULL,
+    lucia_estado    VARCHAR(20)  NOT NULL DEFAULT 'pendiente',
+    lucia_consulta  DATETIME     NULL,
+    lucia_buque     VARCHAR(150) NULL,
+    lucia_viaje     VARCHAR(60)  NULL,
+    lucia_fecha     VARCHAR(30)  NULL,
+    lucia_mensaje   VARCHAR(255) NULL,
+    lucia_detalle   TEXT         NULL,
+    escala_id       INTEGER NULL REFERENCES escalas (id) ON DELETE SET NULL,
+    vinculado       DATETIME     NULL,
+    UNIQUE (numero, carpeta)
+);

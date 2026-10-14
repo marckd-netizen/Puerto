@@ -1,0 +1,91 @@
+<?php
+declare(strict_types=1);
+
+/**
+ * Inicio de sesión y protección de formularios.
+ * Los usuarios se definen en config.php ('usuarios' => ['nombre' => hash]); el hash se
+ * genera con: php cron/crear_usuario.php nombre
+ */
+final class Acceso
+{
+    /** Llamar al principio de cada página. Redirige a login.php si hace falta. */
+    public static function exigir(array $cfg): void
+    {
+        self::iniciarSesion();
+        if (($cfg['requiere_login'] ?? true) && empty($_SESSION['usuario'])) {
+            $volver = $_SERVER['REQUEST_URI'] ?? 'index.php';
+            header('Location: login.php?volver=' . urlencode($volver));
+            exit;
+        }
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            self::verificarToken();
+        }
+    }
+
+    public static function iniciarSesion(): void
+    {
+        if (session_status() === PHP_SESSION_ACTIVE) {
+            return;
+        }
+        session_name('puerto');
+        session_set_cookie_params([
+            'httponly' => true,
+            'samesite' => 'Lax',
+            'secure'   => !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off',
+        ]);
+        session_start();
+    }
+
+    public static function entrar(array $cfg, string $usuario, string $clave): bool
+    {
+        $hash = $cfg['usuarios'][$usuario] ?? null;
+        if (!is_string($hash) || !password_verify($clave, $hash)) {
+            sleep(1); // frena intentos repetidos
+            return false;
+        }
+        session_regenerate_id(true);
+        $_SESSION['usuario'] = $usuario;
+        return true;
+    }
+
+    public static function salir(): void
+    {
+        self::iniciarSesion();
+        $_SESSION = [];
+        session_destroy();
+    }
+
+    public static function usuario(): ?string
+    {
+        return $_SESSION['usuario'] ?? null;
+    }
+
+    public static function token(): string
+    {
+        self::iniciarSesion();
+        return $_SESSION['token'] ??= bin2hex(random_bytes(16));
+    }
+
+    /** Campo oculto para incluir en cada formulario POST. */
+    public static function campoToken(): string
+    {
+        return '<input type="hidden" name="token" value="' . self::token() . '">';
+    }
+
+    private static function verificarToken(): void
+    {
+        if (!hash_equals(self::token(), (string) ($_POST['token'] ?? ''))) {
+            http_response_code(400);
+            exit('La sesión venció o el formulario no es válido. Volvé atrás y recargá la página.');
+        }
+    }
+
+    /** Valida el destino de "volver" para no redirigir a otro sitio. */
+    public static function destinoSeguro(?string $volver): string
+    {
+        $volver = (string) $volver;
+        // Solo rutas del mismo sitio: "/algo" o "pagina.php", nunca "//otro-sitio" ni "https://".
+        $local = preg_match('#^/(?![/\\\\])[^\s]*$#', $volver) || preg_match('#^[a-z_]+\.php(\?[^\s]*)?$#i', $volver);
+        return $local ? $volver : 'index.php';
+    }
+}

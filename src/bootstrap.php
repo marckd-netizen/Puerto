@@ -8,6 +8,10 @@ require_once __DIR__ . '/JsonApiParser.php';
 require_once __DIR__ . '/Lector.php';
 require_once __DIR__ . '/Sincronizador.php';
 require_once __DIR__ . '/Tablero.php';
+require_once __DIR__ . '/Validacion.php';
+require_once __DIR__ . '/Lucia.php';
+require_once __DIR__ . '/Contenedores.php';
+require_once __DIR__ . '/Acceso.php';
 
 function config(): array
 {

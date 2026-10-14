@@ -5,6 +5,7 @@ require dirname(__DIR__) . '/src/bootstrap.php';
 require dirname(__DIR__) . '/src/vistas.php';
 
 $cfg = config();
+Acceso::exigir($cfg);
 $db = Db::conectar($cfg['db']);
 $ahora = time();
 $horas = (int) ($cfg['horas_destacado'] ?? 24);
@@ -15,6 +16,7 @@ $fTerminal = $_GET['terminal'] ?? '';
 $fBuscar = trim($_GET['q'] ?? '');
 $fSoloCambios = !empty($_GET['cambios']);
 $fPasados = !empty($_GET['pasados']);
+$fMios = !empty($_GET['mios']);
 
 // Escalas activas
 $where = ['activa = 1'];
@@ -48,6 +50,16 @@ foreach ($st->fetchAll() as $c) {
 
 $filas = (new Tablero($cfg, $ahora))->filas($escalas, $ultimos, $recientes);
 
+// Contenedores propios vinculados a cada buque (por cualquiera de sus escalas)
+$contenedoresPorEscala = (new Contenedores($db))->porEscala();
+foreach ($filas as &$f) {
+    $f['contenedores'] = [];
+    foreach ($f['terminales'] as $e) {
+        array_push($f['contenedores'], ...($contenedoresPorEscala[(int) $e['id']] ?? []));
+    }
+}
+unset($f);
+
 // Servicios disponibles y servicios ocultos. La elección se guarda en una cookie;
 // si nunca se eligió, se usan los de config.php.
 $serviciosDisponibles = [];
@@ -72,11 +84,15 @@ if (isset($_GET['servicios'])) {
 $ocultosNorm = array_map([Texto::class, 'normalizar'], $ocultos);
 
 $ocultadosPorServicio = 0;
-$filas = array_values(array_filter($filas, function ($f) use ($fTerminal, $fBuscar, $fSoloCambios, $ocultos, &$ocultadosPorServicio) {
+$filas = array_values(array_filter($filas, function ($f) use ($fTerminal, $fBuscar, $fSoloCambios, $fMios, $ocultos, &$ocultadosPorServicio) {
     if ($fTerminal !== '' && !isset($f['terminales'][$fTerminal])) {
         return false;
     }
-    if (Tablero::ocultaPorServicio($f, $ocultos)) {
+    if ($fMios && !$f['contenedores']) {
+        return false;
+    }
+    // Un buque con contenedores propios nunca se oculta por servicio.
+    if (!$f['contenedores'] && Tablero::ocultaPorServicio($f, $ocultos)) {
         $ocultadosPorServicio++;
         return false;
     }
@@ -87,6 +103,9 @@ $filas = array_values(array_filter($filas, function ($f) use ($fTerminal, $fBusc
         $texto = $f['buque'] . ' ' . $f['servicio'] . ' ' . implode(' ', $f['estados']);
         foreach ($f['terminales'] as $e) {
             $texto .= ' ' . $e['viaje'] . ' ' . $e['linea'] . ' ' . $e['agencia'];
+        }
+        foreach ($f['contenedores'] as $c) {
+            $texto .= ' ' . $c['numero'] . ' ' . $c['carpeta'] . ' ' . $c['cliente'];
         }
         if (!str_contains(Texto::normalizar($texto), Texto::normalizar($fBuscar))) {
             return false;
@@ -126,9 +145,10 @@ encabezado('Arribos Montevideo', (int) ($cfg['auto_refresh'] ?? 300));
             <option value="<?= e($cod) ?>" <?= $fTerminal === $cod ? 'selected' : '' ?>><?= e($t['nombre']) ?></option>
         <?php endforeach; ?>
     </select>
-    <input type="search" name="q" value="<?= e($fBuscar) ?>" placeholder="Buscar buque, servicio, línea, agencia">
+    <input type="search" name="q" value="<?= e($fBuscar) ?>" placeholder="Buscar buque, servicio, contenedor, carpeta o cliente">
     <label><input type="checkbox" name="cambios" value="1" <?= $fSoloCambios ? 'checked' : '' ?> onchange="this.form.submit()"> Solo con cambios (últimas <?= $horas ?> h)</label>
     <label><input type="checkbox" name="pasados" value="1" <?= $fPasados ? 'checked' : '' ?> onchange="this.form.submit()"> Incluir ya zarpados</label>
+    <label><input type="checkbox" name="mios" value="1" <?= $fMios ? 'checked' : '' ?> onchange="this.form.submit()"> Solo con contenedores míos</label>
     <details class="servicios">
         <summary>Servicios<?= $ocultos ? ' (' . count($ocultos) . ' ocultos)' : '' ?></summary>
         <div class="servicios-lista">
@@ -154,7 +174,7 @@ encabezado('Arribos Montevideo', (int) ($cfg['auto_refresh'] ?? 300));
     <span><i class="muestra cambio"></i> Cambio hace <?= $horasReciente ?>–<?= $horas ?> h (<?= $cuenta['cambio'] ?? 0 ?>)</span>
     <span><?= count($filas) ?> buques<?php if ($ocultadosPorServicio): ?>
         · <?= $ocultadosPorServicio ?> ocultos por servicio (<?= e(implode(', ', $ocultos)) ?>)
-        <a href="?<?= e(http_build_query(array_filter(['terminal' => $fTerminal, 'q' => $fBuscar, 'cambios' => $fSoloCambios ? 1 : null, 'pasados' => $fPasados ? 1 : null, 'servicios' => 1]))) ?>">mostrar todos</a>
+        <a href="?<?= e(http_build_query(array_filter(['terminal' => $fTerminal, 'q' => $fBuscar, 'cambios' => $fSoloCambios ? 1 : null, 'pasados' => $fPasados ? 1 : null, 'mios' => $fMios ? 1 : null, 'servicios' => 1]))) ?>">mostrar todos</a>
     <?php endif; ?></span>
 </div>
 
@@ -180,6 +200,16 @@ encabezado('Arribos Montevideo', (int) ($cfg['auto_refresh'] ?? 300));
                 <?= e($f['buque']) ?>
                 <?php $viajes = array_unique(array_filter(array_column($f['terminales'], 'viaje'))); ?>
                 <?php if ($viajes): ?><span class="viaje"><?= e(implode(' / ', $viajes)) ?></span><?php endif; ?>
+                <?php if ($f['contenedores']): $clientesFila = array_unique(array_filter(array_column($f['contenedores'], 'cliente'))); ?>
+                    <details class="contenedores-buque">
+                        <summary>📦 <?= count($f['contenedores']) ?> contenedor<?= count($f['contenedores']) > 1 ? 'es' : '' ?><?= $clientesFila ? ' · ' . e(implode(', ', array_slice($clientesFila, 0, 2))) . (count($clientesFila) > 2 ? ' y ' . (count($clientesFila) - 2) . ' más' : '') : '' ?></summary>
+                        <ul>
+                            <?php foreach ($f['contenedores'] as $c): ?>
+                                <li><strong><?= e($c['numero']) ?></strong> · Carpeta <?= e($c['carpeta']) ?><?= $c['cliente'] ? ' · ' . e($c['cliente']) : '' ?></li>
+                            <?php endforeach; ?>
+                        </ul>
+                    </details>
+                <?php endif; ?>
             </td>
             <td>
                 <?php if (count($f['estados']) > 1 && count(array_unique(array_map([Texto::class, 'normalizar'], $f['estados']))) > 1): ?>
