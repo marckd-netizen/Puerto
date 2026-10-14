@@ -22,6 +22,9 @@ return [
     'horas_cambio_reciente' => 2,
     'horas_destacado' => 24,
 
+    // Servicios que no se muestran de entrada (cada usuario puede cambiarlo desde la página).
+    'servicios_ocultos' => ['CRUCERO', 'CIENTIFICO'],
+
     // Si el ESTADO contiene alguno de estos textos, el buque se considera operando
     // y la fila se pinta de verde (sin importar mayúsculas ni tildes).
     'estados_operando' => ['operando', 'en operacion', 'trabajando', 'atracado', 'working', 'berthed', 'alongside'],

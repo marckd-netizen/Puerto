@@ -105,6 +105,7 @@ final class Tablero
 
         $f['estados'] = $estados;
         $f['servicio'] = implode(' / ', $servicios);
+        $f['servicios'] = $servicios;
         $f['ultimo_cambio'] = $ultimo;
         $f['detalle_cambio'] = $detalle;
         $f['nivel'] = $this->nivel($f['operando'], $ultimo);
@@ -147,6 +148,20 @@ final class Tablero
     {
         $d = $fecha ? DateTime::createFromFormat('Y-m-d H:i', $fecha) : false;
         return $d ? $d->getTimestamp() : null;
+    }
+
+    /**
+     * Una fila se oculta si todos sus servicios están en la lista de ocultos.
+     * Las filas sin servicio nunca se ocultan.
+     * @param string[] $ocultos
+     */
+    public static function ocultaPorServicio(array $fila, array $ocultos): bool
+    {
+        if (!$fila['servicios'] || !$ocultos) {
+            return false;
+        }
+        $ocultos = array_map([Texto::class, 'normalizar'], $ocultos);
+        return !array_diff(array_keys($fila['servicios']), $ocultos);
     }
 
     public function esOperando(?string $estado): bool

@@ -48,8 +48,36 @@ foreach ($st->fetchAll() as $c) {
 
 $filas = (new Tablero($cfg, $ahora))->filas($escalas, $ultimos, $recientes);
 
-$filas = array_values(array_filter($filas, function ($f) use ($fTerminal, $fBuscar, $fSoloCambios) {
+// Servicios disponibles y servicios ocultos. La elección se guarda en una cookie;
+// si nunca se eligió, se usan los de config.php.
+$serviciosDisponibles = [];
+foreach ($filas as $f) {
+    foreach ($f['servicios'] as $clave => $nombre) {
+        $serviciosDisponibles[$clave] ??= ['nombre' => $nombre, 'buques' => 0];
+        $serviciosDisponibles[$clave]['buques']++;
+    }
+}
+ksort($serviciosDisponibles);
+
+if (isset($_GET['servicios'])) {
+    $ocultos = array_values(array_filter(array_map('strval', (array) ($_GET['ocultar'] ?? []))));
+    setcookie('servicios_ocultos', json_encode($ocultos), [
+        'expires' => time() + 365 * 86400, 'path' => '/', 'samesite' => 'Lax',
+    ]);
+} elseif (isset($_COOKIE['servicios_ocultos']) && is_array($c = json_decode($_COOKIE['servicios_ocultos'], true))) {
+    $ocultos = array_values(array_filter(array_map('strval', $c)));
+} else {
+    $ocultos = $cfg['servicios_ocultos'] ?? [];
+}
+$ocultosNorm = array_map([Texto::class, 'normalizar'], $ocultos);
+
+$ocultadosPorServicio = 0;
+$filas = array_values(array_filter($filas, function ($f) use ($fTerminal, $fBuscar, $fSoloCambios, $ocultos, &$ocultadosPorServicio) {
     if ($fTerminal !== '' && !isset($f['terminales'][$fTerminal])) {
+        return false;
+    }
+    if (Tablero::ocultaPorServicio($f, $ocultos)) {
+        $ocultadosPorServicio++;
         return false;
     }
     if ($fSoloCambios && !in_array($f['nivel_cambio'], ['reciente', 'cambio'], true)) {
@@ -101,6 +129,22 @@ encabezado('Arribos Montevideo', (int) ($cfg['auto_refresh'] ?? 300));
     <input type="search" name="q" value="<?= e($fBuscar) ?>" placeholder="Buscar buque, servicio, línea, agencia">
     <label><input type="checkbox" name="cambios" value="1" <?= $fSoloCambios ? 'checked' : '' ?> onchange="this.form.submit()"> Solo con cambios (últimas <?= $horas ?> h)</label>
     <label><input type="checkbox" name="pasados" value="1" <?= $fPasados ? 'checked' : '' ?> onchange="this.form.submit()"> Incluir ya zarpados</label>
+    <details class="servicios">
+        <summary>Servicios<?= $ocultos ? ' (' . count($ocultos) . ' ocultos)' : '' ?></summary>
+        <div class="servicios-lista">
+            <input type="hidden" name="servicios" value="1">
+            <p>Marcá los servicios que querés ocultar:</p>
+            <?php foreach ($serviciosDisponibles as $clave => $s): ?>
+                <label>
+                    <input type="checkbox" name="ocultar[]" value="<?= e($s['nombre']) ?>" <?= in_array($clave, $ocultosNorm, true) ? 'checked' : '' ?> onchange="this.form.submit()">
+                    <?= e($s['nombre']) ?> <small>(<?= $s['buques'] ?>)</small>
+                </label>
+            <?php endforeach; ?>
+            <?php foreach ($ocultos as $o): if (!isset($serviciosDisponibles[Texto::normalizar($o)])): ?>
+                <input type="hidden" name="ocultar[]" value="<?= e($o) ?>">
+            <?php endif; endforeach; ?>
+        </div>
+    </details>
     <button type="submit">Filtrar</button>
 </form>
 
@@ -108,7 +152,10 @@ encabezado('Arribos Montevideo', (int) ($cfg['auto_refresh'] ?? 300));
     <span><i class="muestra operando"></i> Operando (<?= $cuenta['operando'] ?? 0 ?>)</span>
     <span><i class="muestra reciente"></i> Cambio hace menos de <?= $horasReciente ?> h (<?= $cuenta['reciente'] ?? 0 ?>)</span>
     <span><i class="muestra cambio"></i> Cambio hace <?= $horasReciente ?>–<?= $horas ?> h (<?= $cuenta['cambio'] ?? 0 ?>)</span>
-    <span><?= count($filas) ?> buques</span>
+    <span><?= count($filas) ?> buques<?php if ($ocultadosPorServicio): ?>
+        · <?= $ocultadosPorServicio ?> ocultos por servicio (<?= e(implode(', ', $ocultos)) ?>)
+        <a href="?<?= e(http_build_query(array_filter(['terminal' => $fTerminal, 'q' => $fBuscar, 'cambios' => $fSoloCambios ? 1 : null, 'pasados' => $fPasados ? 1 : null, 'servicios' => 1]))) ?>">mostrar todos</a>
+    <?php endif; ?></span>
 </div>
 
 <div class="tabla-wrap">

@@ -24,6 +24,10 @@ operativa prevista** (ETA, ETD, estado y servicio).
 - Mientras dura el resaltado, el dato que cambió se muestra en negrita, con el valor anterior tachado.
 - Filtros por terminal, búsqueda, "solo con cambios" e "incluir ya zarpados". Arriba se ve
   la última lectura de cada terminal, en rojo si falló.
+- Filtro **Servicios**: un desplegable con todos los servicios para ocultar los que no interesan.
+  De entrada se ocultan CRUCERO y CIENTIFICO (lista `servicios_ocultos` en `config.php`).
+  Lo que elija cada usuario queda guardado en su navegador. Si un buque está en las dos
+  terminales con servicios distintos, solo se oculta cuando se ocultan los dos.
 - `historial.php`: todos los cambios de los últimos días, o el historial completo de un buque.
 
 Los cambios se detectan en cada lectura, así que la hora del cambio es la de la

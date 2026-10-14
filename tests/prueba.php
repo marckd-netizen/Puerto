@@ -178,5 +178,15 @@ foreach ($filas as $f) {
 }
 verificar(array_diff($todos, $estadosPosibles) === [], 'solo se usan los estados Operando, Esperado, Cancelado y Zarpado');
 
+echo "Filtro de servicios\n";
+$ocultos = $base['servicios_ocultos'];
+verificar($ocultos === ['CRUCERO', 'CIENTIFICO'], 'por defecto se ocultan CRUCERO y CIENTIFICO');
+verificar(Tablero::ocultaPorServicio($buscar('SILVER WIND'), $ocultos), 'SILVER WIND (CRUCERO) se oculta');
+verificar(Tablero::ocultaPorServicio($buscar('ORION'), ['crucero']), 'sin importar mayúsculas');
+verificar(!Tablero::ocultaPorServicio($buscar('XIAMEN EXPRESS'), $ocultos), 'XIAMEN EXPRESS (MSC NORTH EUROPE) se muestra');
+verificar(!Tablero::ocultaPorServicio($inc, ['FLUVIAL']), 'INCANSABLE (FLUVIAL / PARAGUAY FEEDER) se muestra si solo se oculta uno de sus servicios');
+verificar(Tablero::ocultaPorServicio($inc, ['FLUVIAL', 'Paraguay Feeder']), 'INCANSABLE se oculta si se ocultan sus dos servicios');
+verificar(!Tablero::ocultaPorServicio(['servicios' => []], $ocultos), 'un buque sin servicio nunca se oculta');
+
 echo $fallas ? "\n$fallas prueba(s) fallaron\n" : "\nTodas las pruebas pasaron\n";
 exit($fallas ? 1 : 0);

@@ -51,3 +51,14 @@ th { position: sticky; top: 0; background: var(--panel); font-size: 12px; text-t
 .ultimo-cambio .detalle { font-size: 12px; margin-top: 2px; }
 .historial-link { font-size: 11px; color: var(--suave); margin-right: 6px; }
 .sin-dato { color: var(--suave); }
+
+/* Filtro de servicios */
+details.servicios { position: relative; }
+details.servicios summary { cursor: pointer; padding: 6px 10px; border: 1px solid var(--borde); border-radius: 6px; background: var(--panel); list-style: none; }
+details.servicios summary::-webkit-details-marker { display: none; }
+details.servicios summary::after { content: " ▾"; color: var(--suave); }
+.servicios-lista { position: absolute; z-index: 10; top: calc(100% + 4px); left: 0; min-width: 260px; max-height: 60vh; overflow-y: auto;
+    background: var(--panel); border: 1px solid var(--borde); border-radius: 8px; padding: 10px 12px; box-shadow: 0 6px 20px rgba(0,0,0,.15); }
+.servicios-lista p { margin: 0 0 6px; color: var(--suave); font-size: 12px; }
+.servicios-lista label { display: block; padding: 3px 0; white-space: nowrap; }
+.leyenda a { color: inherit; }
