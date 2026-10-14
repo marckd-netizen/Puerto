@@ -233,14 +233,22 @@ final class Contenedores
         }
 
         $escalaId = $this->buscarEscala($r->buque, $r->viaje, $r->fecha, $ahora);
+        $porTerminal = false;
+        if ($escalaId === null && $r->buque === null && $r->terminal !== null && $r->fecha !== null) {
+            $escalaId = $this->buscarEscalaPorTerminal($r->terminal, $r->fecha);
+            $porTerminal = $escalaId !== null;
+        }
         $mismaEscala = $escalaId !== null && $c['escala_id'] !== null && (int) $c['escala_id'] === $escalaId;
         $this->db->prepare("UPDATE contenedores SET lucia_estado = 'encontrado', lucia_consulta = ?, lucia_buque = ?, lucia_viaje = ?,
                 lucia_fecha = ?, lucia_mensaje = ?, lucia_detalle = ?, escala_id = ?, vinculado = ? WHERE id = ?")
             ->execute([
                 $cuando, $r->buque, $r->viaje, $r->fecha,
                 match (true) {
+                    $porTerminal => "Buque deducido por terminal ({$r->terminal}) y fecha de descarga o arribo (" . Texto::mostrarFecha($r->fecha) . ')',
                     $escalaId !== null => null,
-                    $r->buque === null => 'Lucía tiene datos del contenedor (' . implode(', ', $r->detalle['secciones_con_datos'] ?? []) . ') pero no informa el buque',
+                    $r->buque === null && $r->terminal !== null && $r->fecha !== null
+                        => "Ningún buque del tablero operaba en {$r->terminal} el " . Texto::mostrarFecha($r->fecha),
+                    $r->buque === null => 'Lucía tiene datos del contenedor (' . implode(', ', $r->detalle['secciones_con_datos'] ?? []) . '), pero todavía no hay terminal o fecha para ubicar el buque',
                     default => "El buque {$r->buque} no figura en el tablero",
                 },
                 json_encode($r->detalle, JSON_UNESCAPED_UNICODE),
@@ -288,6 +296,45 @@ final class Contenedores
         }
         usort($candidatas, fn($a, $b) => self::distancia($a['eta'], $referencia) <=> self::distancia($b['eta'], $referencia));
         return (int) $candidatas[0]['id'];
+    }
+
+    /**
+     * Lucía no informa el buque, pero sí la terminal y la fecha de descarga (o de arribo).
+     * Se elige la escala de esa terminal que operaba en ese momento: entre ETB (o ETA) y ETD,
+     * con 12 horas de tolerancia. Si ninguna la contiene, la de ETB/ETA más cercana a menos de 48 horas.
+     * Se buscan también escalas ya retiradas del line-up, porque la descarga puede ser pasada.
+     */
+    public function buscarEscalaPorTerminal(string $terminal, string $fecha): ?int
+    {
+        $t = strtotime($fecha);
+        if ($t === false) {
+            return null;
+        }
+        $st = $this->db->prepare('SELECT id, eta, etb, etd FROM escalas WHERE terminal = ?');
+        $st->execute([$terminal]);
+
+        $mejor = null;
+        $mejorPuntaje = PHP_INT_MAX;
+        foreach ($st->fetchAll() as $e) {
+            $inicio = strtotime((string) ($e['etb'] ?: $e['eta']));
+            if (!$inicio) {
+                continue;
+            }
+            $fin = $e['etd'] ? strtotime($e['etd']) : false;
+            if ($fin && $t >= $inicio - 12 * 3600 && $t <= $fin + 12 * 3600) {
+                $puntaje = abs($t - $inicio) / 1000; // dentro de la ventana: siempre gana
+            } else {
+                $puntaje = abs($t - $inicio);
+                if ($puntaje > 48 * 3600) {
+                    continue;
+                }
+            }
+            if ($puntaje < $mejorPuntaje) {
+                $mejorPuntaje = $puntaje;
+                $mejor = (int) $e['id'];
+            }
+        }
+        return $mejor;
     }
 
     private static function distancia(?string $eta, int $referencia): int

@@ -153,7 +153,7 @@ mostrarAvisos();
     <tbody>
     <?php foreach ($contenedores as $c): ?>
         <tr class="<?= $c['escala_id'] ? '' : ($c['lucia_estado'] === 'error' ? 'fila-error' : '') ?>">
-            <td class="buque">
+            <td class="buque numero">
                 <?= e(Validacion::formatearContenedor($c['numero'])) ?>
                 <?php if (!Validacion::digitoContenedorCorrecto($c['numero'])): ?><span class="advertencia" title="El dígito verificador no coincide: revisá el número">⚠</span><?php endif; ?>
             </td>
@@ -163,6 +163,12 @@ mostrarAvisos();
                 <?= e(ESTADOS_LUCIA[$c['lucia_estado']] ?? $c['lucia_estado']) ?>
                 <?php if ($c['lucia_buque']): ?><div><small>Buque:</small> <?= e($c['lucia_buque']) ?> <?= e($c['lucia_viaje']) ?></div><?php endif; ?>
                 <?php if ($c['lucia_mensaje']): ?><div class="detalle"><?= e($c['lucia_mensaje']) ?></div><?php endif; ?>
+                <?php $detalleLucia = json_decode((string) $c['lucia_detalle'], true) ?: []; ?>
+                <?php if (!empty($detalleLucia['resumen'])): ?>
+                    <ul class="resumen-lucia">
+                        <?php foreach ($detalleLucia['resumen'] as $linea): ?><li><?= e($linea) ?></li><?php endforeach; ?>
+                    </ul>
+                <?php endif; ?>
                 <?php if ($c['lucia_consulta']): ?><div><small>Consultado <?= e(date('d/m H:i', strtotime($c['lucia_consulta']))) ?></small></div><?php endif; ?>
             </td>
             <td>

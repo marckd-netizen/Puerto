@@ -59,10 +59,20 @@ Devuelve DUAs, líneas de manifiesto, movimientos de stock, mensajes simplificad
 de viaje y convalidadas del contenedor en ese período. El método `DATOSCONT` también está
 disponible, pero solo mira el día actual.
 
-Lo confirmado con el servicio real: la autenticación HTTP básica con usuario y clave funciona,
-y la respuesta trae `Datoscont` con las secciones `DUAS`, `LINMANIF`, `MOVIMSTOCK`, `MS`,
-`INCAUTACIONES`, `MOVIMVIAJE` y `CONVALIDADA`. **Falta ver una respuesta con datos** para saber
-en qué elemento viene el buque.
+Confirmado con el servicio real:
+- Autenticación HTTP básica con usuario y clave.
+- El contenedor va en formato `AAAA-123456-7` (Lucía lo devuelve así).
+- Estructura de la respuesta (WSDL): `Datoscont` con `DUAS/Dua`, `LINMANIF/Linea`, `MOVIMSTOCK/Movimiento`,
+  `MS/Ms`, `INCAUTACIONES/Incaut`, `MOVIMVIAJE/Movimviaje` y `CONVALIDADA/Convalidada`.
+- **Lucía no informa el nombre del buque.** El `VIAJE` de DUAS y MOVIMVIAJE es el del tránsito
+  terrestre (camión), no el del barco.
+
+Por eso el buque se **deduce**: la terminal sale del operador de la convalidada
+("TERMINAL CUENCA DEL PLATA" → TCP) o del depósito del manifiesto (1650 → TCP; falta el código de Montecon),
+y la fecha, de la descarga de la convalidada (o del arribo del manifiesto, si es una fecha plausible).
+Se elige el buque que operaba en esa terminal en ese momento (entre ETB y ETD), y en la página se aclara
+"Buque deducido por terminal y fecha". Además, cada contenedor muestra un resumen: descarga, origen y destino,
+manifiesto y liberación, DUA, mensajes simplificados, último movimiento de stock, tránsito e incautaciones.
 
 Dirección: `https://servicios.aduanas.gub.uy/luciaws/awsdatcont.aspx?wsdl`. Si la Aduana
 habilita el acceso solo desde ciertas direcciones IP, la del servidor del sitio tiene que estar habilitada.

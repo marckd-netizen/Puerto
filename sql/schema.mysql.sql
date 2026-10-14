@@ -67,7 +67,7 @@ CREATE TABLE IF NOT EXISTS contenedores (
     lucia_viaje     VARCHAR(60)  NULL,
     lucia_fecha     VARCHAR(30)  NULL,
     lucia_mensaje   VARCHAR(255) NULL,
-    lucia_detalle   TEXT         NULL,
+    lucia_detalle   MEDIUMTEXT   NULL,
     escala_id       INT UNSIGNED NULL,
     vinculado       DATETIME     NULL,
     UNIQUE KEY uk_numero_carpeta (numero, carpeta),

@@ -43,7 +43,7 @@ final class LuciaSoap implements ConsultaLucia
             ? $this->sobreFechas($contenedor, ...$this->rango($ahora ?? time()))
             : $this->sobre($contenedor, $this->cfg['quedatos'] ?? 'TOD');
         $xml = $this->llamar($sobre, 'LUCIAxaction/AWSDATCONT.' . $metodo);
-        return $this->interpretar($xml, $this->cfg['campos'] ?? []);
+        return $this->interpretar($xml, $this->cfg['campos'] ?? [], $ahora);
     }
 
     public function metodo(): string
@@ -150,7 +150,7 @@ final class LuciaSoap implements ConsultaLucia
      * Busca en la respuesta los registros que traen buque y se queda con el de fecha más reciente.
      * @param array<string, string[]> $campos alias adicionales por campo (buque, viaje, fecha)
      */
-    public function interpretar(string $xml, array $campos = []): ResultadoLucia
+    public function interpretar(string $xml, array $campos = [], ?int $ahora = null): ResultadoLucia
     {
         $datos = self::xmlComoArray($xml);
         if ($datos === null) {
@@ -172,12 +172,8 @@ final class LuciaSoap implements ConsultaLucia
         $registros = [];
         self::registrosConBuque($datos, $alias['buque'], $registros);
         if (!$registros) {
-            // Sin buque: igual cuenta como encontrado si alguna sección trae datos.
-            $conDatos = array_values(array_filter(self::SECCIONES, function ($sec) use ($datos) {
-                $v = self::buscarClave($datos, [$sec]);
-                return $v !== null && $v !== '' && $v !== [];
-            }));
-            return new ResultadoLucia((bool) $conDatos, detalle: ['secciones_con_datos' => $conDatos, 'mensaje' => $mensaje, 'respuesta' => $datos]);
+            // Lo habitual: Lucía no informa el buque. Se usan la terminal y la fecha de descarga.
+            return $this->interpretarDatoscont($datos, $mensaje, $ahora ?? time());
         }
 
         $mejor = null;
@@ -193,6 +189,134 @@ final class LuciaSoap implements ConsultaLucia
             }
         }
         return new ResultadoLucia(true, $mejor['buque'], $mejor['viaje'], $mejor['fecha'], $mejor['registro']);
+    }
+
+    /**
+     * Lectura de Datoscont según la estructura real del servicio (ver WSDL):
+     * DUAS/Dua, LINMANIF/Linea, MOVIMSTOCK/Movimiento, MS/Ms, INCAUTACIONES/Incaut,
+     * MOVIMVIAJE/Movimviaje, CONVALIDADA/Convalidada. Ninguna trae el nombre del buque:
+     * se informa la terminal (operador de la convalidada o depósito del manifiesto) y la fecha
+     * de descarga (o de arribo del manifiesto) para ubicar el buque en el tablero.
+     */
+    private function interpretarDatoscont(array $datos, ?string $mensaje, int $ahora): ResultadoLucia
+    {
+        $sec = fn(string $seccion, string $item) => self::items($datos, $seccion, $item);
+        $duas = $sec('DUAS', 'Dua');
+        $lineas = $sec('LINMANIF', 'Linea');
+        $stock = $sec('MOVIMSTOCK', 'Movimiento');
+        $ms = $sec('MS', 'Ms');
+        $incautaciones = $sec('INCAUTACIONES', 'Incaut');
+        $viajes = $sec('MOVIMVIAJE', 'Movimviaje');
+        $convalidadas = $sec('CONVALIDADA', 'Convalidada');
+
+        $conDatos = array_keys(array_filter([
+            'DUAS' => $duas, 'LINMANIF' => $lineas, 'MOVIMSTOCK' => $stock, 'MS' => $ms,
+            'INCAUTACIONES' => $incautaciones, 'MOVIMVIAJE' => $viajes, 'CONVALIDADA' => $convalidadas,
+        ]));
+        if (!$conDatos) {
+            return new ResultadoLucia(false, detalle: ['mensaje' => $mensaje, 'respuesta' => $datos]);
+        }
+
+        // Terminal y fecha: la convalidada (descarga real) manda; si no hay, la línea de manifiesto.
+        $conv = self::masReciente($convalidadas, 'DESCARGA');
+        $linea = $lineas ? $lineas[0] : null;
+        $terminal = $this->terminalDe($conv['OPERADOR'] ?? null, $conv['DEPOSITO'] ?? $linea['DEPOSITO'] ?? null);
+        $fecha = Texto::fecha($conv['DESCARGA'] ?? null);
+        if ($fecha === null) {
+            $fecha = self::fechaPlausible(self::fechaAmd($linea['FECHAARRIB'] ?? null), $ahora);
+        }
+        $manifiesto = $conv['MANIFIESTO'] ?? $linea['NROMIC'] ?? null;
+
+        $resumen = [];
+        if ($conv) {
+            $resumen[] = 'Descargado ' . (Texto::mostrarFecha(Texto::fecha($conv['DESCARGA'] ?? null)) ?: '(sin fecha)')
+                . ($conv['OPERADOR'] ?? '' ? ' en ' . $conv['OPERADOR'] : '')
+                . ($conv['ORIGEN'] ?? '' ? " · {$conv['ORIGEN']} → " . ($conv['DESTINO'] ?? '') : '')
+                . ($conv['TAMANO'] ?? '' ? " · {$conv['TAMANO']}" : '');
+        }
+        foreach ($lineas as $l) {
+            $resumen[] = "Manifiesto {$l['NROMIC']} línea " . ($l['NROLINEA'] ?? '?') . ' · estado ' . ($l['ESTADO'] ?? '?')
+                . (($l['LIBERADO'] ?? '') === 'S' ? ' · liberado ' . Texto::mostrarFecha(Texto::fecha($l['FECHALIB'] ?? null)) : ' · no liberado');
+        }
+        foreach ($duas as $d) {
+            $resumen[] = "DUA {$d['ADUANA']}-{$d['ANIO']}-{$d['NUMERO']} · estado {$d['ESTADO']}"
+                . (($f = self::fechaAmd($d['FECHANUME'] ?? null)) ? ' · numerado ' . substr(Texto::mostrarFecha($f), 0, 5) : '');
+        }
+        foreach ($ms as $m) {
+            $resumen[] = "Mensaje simplificado {$m['ADUANA']}-{$m['ANO']}-{$m['NUMERO']} · estado {$m['ESTADO']}";
+        }
+        if ($ultimo = self::masReciente($stock, 'FECHA')) {
+            $resumen[] = 'Último movimiento de stock: ' . (($ultimo['TIPO'] ?? '') === 'SAL' ? 'salida' : 'entrada')
+                . " depósito {$ultimo['DEPOSITO']} · " . substr(Texto::mostrarFecha(Texto::fecha($ultimo['FECHA'] ?? null)), 0, 5);
+        }
+        if ($ultimo = self::masReciente($viajes, 'FECHA')) {
+            $resumen[] = "Tránsito: viaje {$ultimo['VIAJE']} · matrícula {$ultimo['MATRICULA']} · "
+                . substr(Texto::mostrarFecha(Texto::fecha($ultimo['FECHA'] ?? null)), 0, 5) . " · estado {$ultimo['ESTADO']}";
+        }
+        foreach ($incautaciones as $i) {
+            $resumen[] = "⚠ Incautación {$i['ADUANA']}-{$i['ANIO']}-{$i['NUMERO']} · estado {$i['ESTADO']}";
+        }
+        if ($mensaje) {
+            $resumen[] = "Lucía: $mensaje";
+        }
+
+        return new ResultadoLucia(
+            true,
+            null,
+            null,
+            $fecha,
+            ['secciones_con_datos' => $conDatos, 'manifiesto' => $manifiesto, 'mensaje' => $mensaje, 'resumen' => $resumen, 'respuesta' => $datos],
+            $terminal,
+            $resumen,
+        );
+    }
+
+    /** Código de terminal (TCP, MONTECON) según el operador o el depósito, con las equivalencias de config.php. */
+    private function terminalDe(?string $operador, ?string $deposito): ?string
+    {
+        $operadores = $this->cfg['operadores'] ?? ['CUENCA DEL PLATA' => 'TCP', 'MONTECON' => 'MONTECON'];
+        foreach ($operadores as $texto => $codigo) {
+            if ($operador !== null && str_contains(Texto::normalizar($operador), Texto::normalizar($texto))) {
+                return $codigo;
+            }
+        }
+        $depositos = $this->cfg['depositos'] ?? ['1650' => 'TCP'];
+        return $deposito !== null ? ($depositos[trim($deposito)] ?? null) : null;
+    }
+
+    /** Elementos de una sección de Datoscont, siempre como lista. */
+    private static function items(array $datos, string $seccion, string $item): array
+    {
+        $s = self::buscarClave($datos, [$seccion]);
+        if (!is_array($s) || !isset($s[$item])) {
+            return [];
+        }
+        $v = $s[$item];
+        return is_array($v) && array_is_list($v) ? $v : [$v];
+    }
+
+    private static function masReciente(array $items, string $campoFecha): ?array
+    {
+        $mejor = null;
+        foreach ($items as $i) {
+            if (is_array($i) && ($mejor === null || (string) ($i[$campoFecha] ?? '') > (string) ($mejor[$campoFecha] ?? ''))) {
+                $mejor = $i;
+            }
+        }
+        return $mejor;
+    }
+
+    /** "20261013" → "2026-10-13 00:00" */
+    private static function fechaAmd(?string $s): ?string
+    {
+        return ($s !== null && preg_match('/^(\d{4})(\d{2})(\d{2})$/', trim($s), $m) && checkdate((int) $m[2], (int) $m[3], (int) $m[1]))
+            ? "$m[1]-$m[2]-$m[3] 00:00" : null;
+    }
+
+    /** Descarta fechas de relleno (por ejemplo 20260101 en un manifiesto de octubre). */
+    private static function fechaPlausible(?string $fecha, int $ahora): ?string
+    {
+        return ($fecha !== null && abs(strtotime($fecha) - $ahora) <= 90 * 86400) ? $fecha : null;
     }
 
     /** XML a arreglo, sin espacios de nombres. Los elementos repetidos quedan como lista. */

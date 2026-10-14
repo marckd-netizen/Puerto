@@ -245,7 +245,7 @@ $r = $soap->interpretar(file_get_contents(__DIR__ . '/fixtures/lucia_respuesta_s
 verificar($r->encontrado && $r->buque === 'CAP SAN ARTEMISSIO' && $r->viaje === '641W' && $r->fecha === '2026-10-12 11:00', 'extrae buque, viaje y fecha (el registro más reciente de dos)');
 $vacia = $soap->interpretar(file_get_contents(__DIR__ . '/fixtures/lucia_respuesta_vacia_real.xml'));
 verificar(!$vacia->encontrado, 'respuesta real sin datos (todas las secciones vacías) → no encontrado');
-$sinBuque = $soap->interpretar(str_replace('<DUAS />', '<DUAS><DUA><Anio>2026</Anio><Numero>123456</Numero></DUA></DUAS>', file_get_contents(__DIR__ . '/fixtures/lucia_respuesta_vacia_real.xml')));
+$sinBuque = $soap->interpretar(str_replace('<DUAS />', '<DUAS><Dua><ADUANA>001</ADUANA><ANIO>2026</ANIO><NUMERO>123456</NUMERO><ESTADO>NUM</ESTADO></Dua></DUAS>', file_get_contents(__DIR__ . '/fixtures/lucia_respuesta_vacia_real.xml')));
 verificar($sinBuque->encontrado && $sinBuque->buque === null && $sinBuque->detalle['secciones_con_datos'] === ['DUAS'], 'con datos pero sin buque → encontrado, sin buque, indicando la sección');
 verificar($soap->metodo() === 'DATOSCONTFECHAS', 'por defecto usa DATOSCONTFECHAS');
 verificar($soap->rango(strtotime('2026-10-14 12:00')) === ['2026-08-15', '2026-11-13'], 'rango por defecto: 60 días atrás y 30 adelante');
@@ -292,6 +292,59 @@ try {
 } finally {
     proc_terminate($proc);
 }
+
+echo "Lucía: respuesta real con datos (HAMU-464008-4)\n";
+$soapReal = new LuciaSoap(['url' => 'http://ejemplo/']);
+$hamu = $soapReal->interpretar(file_get_contents(__DIR__ . '/fixtures/lucia_respuesta_con_datos.xml'), [], strtotime('2026-10-14 12:00'));
+verificar($hamu->encontrado && $hamu->buque === null, 'encontrado; Lucía no informa el buque');
+verificar($hamu->terminal === 'TCP', 'terminal TCP, por el operador de la convalidada');
+verificar($hamu->fecha === '2026-10-03 20:28', 'fecha = descarga de la convalidada (03/10 20:28)');
+verificar(($hamu->detalle['manifiesto'] ?? '') === '291201', 'manifiesto 291201');
+verificar(count(array_diff(['DUAS', 'LINMANIF', 'MOVIMSTOCK', 'MS', 'MOVIMVIAJE', 'CONVALIDADA'], $hamu->detalle['secciones_con_datos'])) === 0, 'detecta las 6 secciones con datos');
+$res = implode("\n", $hamu->resumen);
+verificar(str_contains($res, 'Descargado 03/10 20:28 en TERMINAL CUENCA DEL PLATA S A · US HOU → UY MVD · 40GP'), 'resumen: descarga, origen y tamaño');
+verificar(str_contains($res, 'DUA 001-2026-203685 · estado DES · numerado 13/10'), 'resumen: DUA');
+verificar(str_contains($res, 'Manifiesto 291201 línea 1 · estado CER · liberado 02/10 15:09'), 'resumen: línea de manifiesto liberada');
+verificar(str_contains($res, 'Último movimiento de stock: salida depósito 1694 · 14/10'), 'resumen: último movimiento de stock');
+verificar(str_contains($res, 'Tránsito: viaje 8319011 · matrícula AAA0000 · 14/10'), 'resumen: tránsito');
+
+// Sin convalidada: terminal por depósito del manifiesto; la fecha de relleno 20260101 se descarta
+$soloManif = preg_replace('#<CONVALIDADA>.*</CONVALIDADA>#s', '<CONVALIDADA />', file_get_contents(__DIR__ . '/fixtures/lucia_respuesta_con_datos.xml'));
+$m = $soapReal->interpretar($soloManif, [], strtotime('2026-10-14 12:00'));
+verificar($m->terminal === 'TCP' && $m->fecha === null, 'sin convalidada: TCP por depósito 1650; la fecha 2026-01-01 se descarta por ser de relleno');
+$m2 = $soapReal->interpretar(str_replace('<FECHAARRIB>20260101</FECHAARRIB>', '<FECHAARRIB>20261020</FECHAARRIB>', $soloManif), [], strtotime('2026-10-14 12:00'));
+verificar($m2->fecha === '2026-10-20 00:00', 'una fecha de arribo plausible del manifiesto sí se usa');
+
+echo "Vinculación por terminal y fecha de descarga\n";
+$db4 = Db::conectar(['driver' => 'sqlite', 'sqlite_path' => ':memory:']);
+$ins = $db4->prepare('INSERT INTO escalas (terminal, clave, buque, viaje, eta, etb, etd, primera_vez, ultima_vez, activa) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
+foreach ([
+    ['TCP', 'a', 'BUQUE ANTERIOR', 'Sem. 39', '2026-09-28 06:00', '2026-09-28 10:00', '2026-09-29 08:00', 0],
+    ['TCP', 'b', 'BUQUE DE LA DESCARGA', 'Sem. 40', '2026-10-03 02:00', '2026-10-03 08:00', '2026-10-04 06:00', 0],
+    ['TCP', 'c', 'BUQUE SIGUIENTE', 'Sem. 40', '2026-10-04 20:00', '2026-10-05 02:00', '2026-10-05 20:00', 1],
+    ['MONTECON', 'd', 'OTRA TERMINAL', '1', '2026-10-03 06:00', '2026-10-03 07:00', '2026-10-04 07:00', 1],
+] as [$term, $clave, $buque, $viaje, $eta, $etb, $etd, $activa]) {
+    $ins->execute([$term, $clave, $buque, $viaje, $eta, $etb, $etd, '2026-09-20 00:00:00', '2026-10-01 00:00:00', $activa]);
+}
+$cont4 = new Contenedores($db4);
+$idEsc = $cont4->buscarEscalaPorTerminal('TCP', '2026-10-03 20:28');
+verificar($db4->query("SELECT buque FROM escalas WHERE id = $idEsc")->fetchColumn() === 'BUQUE DE LA DESCARGA', 'descarga 03/10 20:28 en TCP → el buque que operaba entonces (aunque ya salió del line-up)');
+verificar($cont4->buscarEscalaPorTerminal('TCP', '2026-10-15 10:00') === null, 'sin buque cerca de esa fecha → no se vincula');
+verificar($db4->query('SELECT buque FROM escalas WHERE id = ' . $cont4->buscarEscalaPorTerminal('MONTECON', '2026-10-03 20:28'))->fetchColumn() === 'OTRA TERMINAL', 'respeta la terminal');
+
+$cont4->guardarContenedor('HAMU4640084', '2026-500');
+$luciaFija = new class (file_get_contents(__DIR__ . '/fixtures/lucia_respuesta_con_datos.xml')) implements ConsultaLucia {
+    public function __construct(private string $xml) {}
+    public function consultar(string $contenedor): ResultadoLucia
+    {
+        return (new LuciaSoap(['url' => 'http://ejemplo/']))->interpretar($this->xml, [], strtotime('2026-10-14 12:00'));
+    }
+};
+$r = $cont4->consultarPendientes($luciaFija, ['pausa_segundos' => 0], strtotime('2026-10-14 12:00'));
+$fila = $db4->query("SELECT c.lucia_mensaje, c.lucia_detalle, e.buque FROM contenedores c LEFT JOIN escalas e ON e.id = c.escala_id WHERE c.numero = 'HAMU4640084'")->fetch();
+verificar($r['vinculados'] === 1 && $fila['buque'] === 'BUQUE DE LA DESCARGA', 'HAMU-464008-4 queda vinculado al buque que descargaba en TCP');
+verificar(str_contains((string) $fila['lucia_mensaje'], 'deducido por terminal (TCP)'), 'se aclara que el buque es deducido');
+verificar(count(json_decode($fila['lucia_detalle'], true)['resumen']) >= 5, 'se guarda el resumen para mostrar');
 
 echo $fallas ? "\n$fallas prueba(s) fallaron\n" : "\nTodas las pruebas pasaron\n";
 exit($fallas ? 1 : 0);

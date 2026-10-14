@@ -10,6 +10,8 @@ final class ResultadoLucia
      * @param ?string $viaje número de viaje, si lo informa
      * @param ?string $fecha fecha de arribo prevista ("Y-m-d H:i"), si la informa
      * @param array $detalle respuesta completa, para mostrar y para depurar
+     * @param ?string $terminal terminal donde se descargó o se descarga (código de config.php), si se sabe
+     * @param list<string> $resumen situación del contenedor en frases cortas, para mostrar
      */
     public function __construct(
         public readonly bool $encontrado,
@@ -17,6 +19,8 @@ final class ResultadoLucia
         public readonly ?string $viaje = null,
         public readonly ?string $fecha = null,
         public readonly array $detalle = [],
+        public readonly ?string $terminal = null,
+        public readonly array $resumen = [],
     ) {
     }
 }
