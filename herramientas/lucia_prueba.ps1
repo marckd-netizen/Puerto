@@ -4,6 +4,7 @@
 #   1. wsdl.xml                    descripcion del servicio (sin datos de clientes)
 #   2. respuesta_datoscont.xml     metodo DATOSCONT con Quedatos = TOD
 #   3. respuesta_fechas.xml        metodo DATOSCONTFECHAS con un rango de fechas amplio
+#   4. respuesta_fechas_sin_guiones.xml   lo mismo, con el contenedor sin guiones (para comparar)
 # La clave se guarda solo durante la prueba en un archivo temporal que se borra al final.
 
 $ErrorActionPreference = 'Stop'
@@ -15,7 +16,13 @@ if (-not (Get-Command curl.exe -ErrorAction SilentlyContinue)) {
     exit 1
 }
 
-$cont = (Read-Host 'Numero de contenedor (ej. MSKU1234567)').Trim().ToUpper() -replace '[^A-Z0-9]', ''
+$cont = (Read-Host 'Numero de contenedor (ej. MSKU-123456-5)').Trim().ToUpper() -replace '[^A-Z0-9]', ''
+if ($cont -notmatch '^[A-Z]{4}[0-9]{7}$') {
+    Write-Host 'El numero tiene que tener 4 letras y 7 numeros.'
+    exit 1
+}
+# Formato que usa Lucia: AAAA-123456-7
+$contGuiones = $cont.Substring(0, 4) + '-' + $cont.Substring(4, 6) + '-' + $cont.Substring(10, 1)
 $diasAtras = Read-Host 'Dias hacia atras [Enter = 60]'
 if (-not $diasAtras) { $diasAtras = 60 }
 $diasAdelante = Read-Host 'Dias hacia adelante [Enter = 30]'
@@ -58,7 +65,7 @@ try {
 <Envelope xmlns="http://schemas.xmlsoap.org/soap/envelope/">
   <Body>
     <WSDatCont.DATOSCONT xmlns="LUCIAx">
-      <Contenedor>$cont</Contenedor>
+      <Contenedor>$contGuiones</Contenedor>
       <Quedatos>TOD</Quedatos>
     </WSDatCont.DATOSCONT>
   </Body>
@@ -73,12 +80,15 @@ try {
     <WSDatCont.DATOSCONTFECHAS xmlns="LUCIAx">
       <Fechainicial>$desde</Fechainicial>
       <Fechafinal>$hasta</Fechafinal>
-      <Contenedor>$cont</Contenedor>
+      <Contenedor>$contGuiones</Contenedor>
     </WSDatCont.DATOSCONTFECHAS>
   </Body>
 </Envelope>
 "@
-    Consultar "3) DATOSCONTFECHAS del $desde al $hasta" 'LUCIAxaction/AWSDATCONT.DATOSCONTFECHAS' $fechas 'pedido_fechas.xml' 'respuesta_fechas.xml'
+    Consultar "3) DATOSCONTFECHAS del $desde al $hasta, contenedor $contGuiones" 'LUCIAxaction/AWSDATCONT.DATOSCONTFECHAS' $fechas 'pedido_fechas.xml' 'respuesta_fechas.xml'
+
+    $sinGuiones = $fechas.Replace("<Contenedor>$contGuiones</Contenedor>", "<Contenedor>$cont</Contenedor>")
+    Consultar "4) DATOSCONTFECHAS del $desde al $hasta, contenedor $cont (sin guiones)" 'LUCIAxaction/AWSDATCONT.DATOSCONTFECHAS' $sinGuiones 'pedido_fechas_sin_guiones.xml' 'respuesta_fechas_sin_guiones.xml'
 }
 finally {
     Remove-Item -LiteralPath $cfg -ErrorAction SilentlyContinue
@@ -87,4 +97,4 @@ finally {
 Write-Host ''
 Write-Host '-------------------------------------------'
 Write-Host "Archivos guardados en: $PSScriptRoot"
-Write-Host 'Compartir wsdl.xml, respuesta_datoscont.xml y respuesta_fechas.xml (tachando datos de clientes).'
+Write-Host 'Compartir wsdl.xml y las respuestas (tachando datos de clientes).'

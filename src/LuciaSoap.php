@@ -60,9 +60,17 @@ final class LuciaSoap implements ConsultaLucia
         ];
     }
 
+    /** Número como lo espera Lucía: AAAA-123456-7 ('guiones', por defecto) o AAAA1234567 ('continuo'). */
+    public function numeroParaLucia(string $contenedor): string
+    {
+        return ($this->cfg['formato_contenedor'] ?? 'guiones') === 'continuo'
+            ? Validacion::normalizarContenedor($contenedor)
+            : Validacion::formatearContenedor($contenedor);
+    }
+
     public function sobreFechas(string $contenedor, string $desde, string $hasta): string
     {
-        $c = htmlspecialchars($contenedor, ENT_XML1);
+        $c = htmlspecialchars($this->numeroParaLucia($contenedor), ENT_XML1);
         return <<<XML
             <?xml version="1.0" encoding="utf-8"?>
             <Envelope xmlns="http://schemas.xmlsoap.org/soap/envelope/">
@@ -79,7 +87,7 @@ final class LuciaSoap implements ConsultaLucia
 
     public function sobre(string $contenedor, string $quedatos): string
     {
-        $c = htmlspecialchars($contenedor, ENT_XML1);
+        $c = htmlspecialchars($this->numeroParaLucia($contenedor), ENT_XML1);
         $q = htmlspecialchars($quedatos, ENT_XML1);
         return <<<XML
             <?xml version="1.0" encoding="utf-8"?>

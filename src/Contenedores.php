@@ -49,31 +49,32 @@ final class Contenedores
         $numero = Validacion::normalizarContenedor($numero);
         $carpeta = Texto::limpiar($carpeta);
         if (!Validacion::formatoContenedor($numero)) {
-            return ['ok' => false, 'mensaje' => "Contenedor inválido ($numero): el formato es AAAAnnnnnnn"];
+            return ['ok' => false, 'mensaje' => "Contenedor inválido ($numero): el formato es AAAA-123456-7"];
         }
         if ($carpeta === '') {
-            return ['ok' => false, 'mensaje' => "Falta el número de carpeta del contenedor $numero"];
+            return ['ok' => false, 'mensaje' => "Falta el número de carpeta del contenedor " . Validacion::formatearContenedor($numero)];
         }
         $clienteId = null;
         if ($rut !== null && Validacion::normalizarRut($rut) !== '') {
             $clienteId = $this->idCliente($rut);
             if ($clienteId === null) {
-                return ['ok' => false, 'mensaje' => "No existe un cliente con RUT " . Validacion::normalizarRut($rut) . " (contenedor $numero)"];
+                return ['ok' => false, 'mensaje' => "No existe un cliente con RUT " . Validacion::normalizarRut($rut) . " (contenedor " . Validacion::formatearContenedor($numero) . ")"];
             }
         }
         $aviso = Validacion::digitoContenedorCorrecto($numero)
             ? '' : ' (atención: el dígito verificador no coincide, revisá el número)';
+        $legible = Validacion::formatearContenedor($numero);
 
         $st = $this->db->prepare('SELECT id FROM contenedores WHERE numero = ? AND carpeta = ?');
         $st->execute([$numero, $carpeta]);
         $id = $st->fetchColumn();
         if ($id !== false) {
             $this->db->prepare('UPDATE contenedores SET cliente_id = ?, activo = 1 WHERE id = ?')->execute([$clienteId, $id]);
-            return ['ok' => true, 'mensaje' => "Contenedor $numero (carpeta $carpeta) actualizado$aviso", 'id' => (int) $id];
+            return ['ok' => true, 'mensaje' => "Contenedor $legible (carpeta $carpeta) actualizado$aviso", 'id' => (int) $id];
         }
         $this->db->prepare('INSERT INTO contenedores (numero, carpeta, cliente_id, creado) VALUES (?, ?, ?, ?)')
             ->execute([$numero, $carpeta, $clienteId, date('Y-m-d H:i:s')]);
-        return ['ok' => true, 'mensaje' => "Contenedor $numero (carpeta $carpeta) agregado$aviso", 'id' => (int) $this->db->lastInsertId()];
+        return ['ok' => true, 'mensaje' => "Contenedor $legible (carpeta $carpeta) agregado$aviso", 'id' => (int) $this->db->lastInsertId()];
     }
 
     // -------------------------------------------------------------- importación
@@ -170,7 +171,7 @@ final class Contenedores
             try {
                 $escalaId = $this->procesar($lucia, $c, $ahora);
             } catch (Throwable $t) {
-                $res['errores'][] = "{$c['numero']}: {$t->getMessage()}";
+                $res['errores'][] = Validacion::formatearContenedor($c['numero']) . ": {$t->getMessage()}";
                 if ($t instanceof LuciaSinConfigurar) {
                     break; // no tiene sentido seguir si falta configuración
                 }
@@ -181,7 +182,7 @@ final class Contenedores
                 $res['vinculados'] += $escalaId === null ? 0 : 1;
             }
             if ($log) {
-                $log($c['numero'] . ': ' . match (true) {
+                $log(Validacion::formatearContenedor($c['numero']) . ': ' . match (true) {
                     $escalaId === false => 'no encontrado en Lucía',
                     $escalaId === null => 'encontrado, pero su buque no figura en el tablero',
                     default => "vinculado a la escala #$escalaId",
@@ -201,10 +202,11 @@ final class Contenedores
             throw new RuntimeException('Contenedor inexistente');
         }
         $escalaId = $this->procesar($lucia, $c, $ahora ?? time());
+        $numero = Validacion::formatearContenedor($c['numero']);
         return match (true) {
-            $escalaId === false => "{$c['numero']}: Lucía no tiene información del contenedor",
-            $escalaId === null => "{$c['numero']}: encontrado, pero su buque no figura en el tablero",
-            default => "{$c['numero']}: vinculado al buque",
+            $escalaId === false => "$numero: Lucía no tiene información del contenedor",
+            $escalaId === null => "$numero: encontrado, pero su buque no figura en el tablero",
+            default => "$numero: vinculado al buque",
         };
     }
 

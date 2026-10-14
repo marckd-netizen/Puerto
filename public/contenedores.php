@@ -97,7 +97,7 @@ mostrarAvisos();
         <form method="post" class="formulario">
             <?= Acceso::campoToken() ?>
             <input type="hidden" name="accion" value="guardar">
-            <label>Contenedor <input name="numero" required pattern="\s*[A-Za-z]{4}\s*-?\s*\d{6}\s*-?\s*\d\s*" placeholder="AAAAnnnnnnn" style="text-transform:uppercase"></label>
+            <label>Contenedor <input name="numero" required pattern="\s*[A-Za-z]{4}\s*-?\s*\d{6}\s*-?\s*\d\s*" placeholder="AAAA-123456-7" style="text-transform:uppercase"></label>
             <label>Carpeta <input name="carpeta" required></label>
             <label>Cliente
                 <select name="rut">
@@ -117,7 +117,7 @@ mostrarAvisos();
             <input type="hidden" name="accion" value="importar">
             <label><span>Pegá desde Excel: <b>Contenedor</b>, <b>Carpeta</b> y, opcional, <b>RUT del cliente</b>.
                 El cliente tiene que estar cargado antes.</span>
-                <textarea name="texto" rows="5" required placeholder="MSKU1234565	2026-0153	211234560012"></textarea>
+                <textarea name="texto" rows="5" required placeholder="MSKU-123456-5	2026-0153	211234560012"></textarea>
             </label>
             <button type="submit">Importar</button>
         </form>
@@ -154,7 +154,7 @@ mostrarAvisos();
     <?php foreach ($contenedores as $c): ?>
         <tr class="<?= $c['escala_id'] ? '' : ($c['lucia_estado'] === 'error' ? 'fila-error' : '') ?>">
             <td class="buque">
-                <?= e($c['numero']) ?>
+                <?= e(Validacion::formatearContenedor($c['numero'])) ?>
                 <?php if (!Validacion::digitoContenedorCorrecto($c['numero'])): ?><span class="advertencia" title="El dígito verificador no coincide: revisá el número">⚠</span><?php endif; ?>
             </td>
             <td><?= e($c['carpeta']) ?></td>
@@ -181,7 +181,7 @@ mostrarAvisos();
                 <?php else: ?>
                     <form method="post"><?= Acceso::campoToken() ?><input type="hidden" name="accion" value="reactivar"><input type="hidden" name="id" value="<?= (int) $c['id'] ?>"><button type="submit" class="enlace">Reactivar</button></form>
                 <?php endif; ?>
-                <form method="post" data-pregunta="¿Borrar el contenedor <?= e($c['numero']) ?> (carpeta <?= e($c['carpeta']) ?>)?" onsubmit="return confirm(this.dataset.pregunta)">
+                <form method="post" data-pregunta="¿Borrar el contenedor <?= e(Validacion::formatearContenedor($c['numero'])) ?> (carpeta <?= e($c['carpeta']) ?>)?" onsubmit="return confirm(this.dataset.pregunta)">
                     <?= Acceso::campoToken() ?><input type="hidden" name="accion" value="borrar"><input type="hidden" name="id" value="<?= (int) $c['id'] ?>"><button type="submit" class="enlace">Borrar</button>
                 </form>
             </td>

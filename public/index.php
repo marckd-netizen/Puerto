@@ -105,7 +105,7 @@ $filas = array_values(array_filter($filas, function ($f) use ($fTerminal, $fBusc
             $texto .= ' ' . $e['viaje'] . ' ' . $e['linea'] . ' ' . $e['agencia'];
         }
         foreach ($f['contenedores'] as $c) {
-            $texto .= ' ' . $c['numero'] . ' ' . $c['carpeta'] . ' ' . $c['cliente'];
+            $texto .= ' ' . $c['numero'] . ' ' . Validacion::formatearContenedor($c['numero']) . ' ' . $c['carpeta'] . ' ' . $c['cliente'];
         }
         if (!str_contains(Texto::normalizar($texto), Texto::normalizar($fBuscar))) {
             return false;
@@ -205,7 +205,7 @@ encabezado('Arribos Montevideo', (int) ($cfg['auto_refresh'] ?? 300));
                         <summary>📦 <?= count($f['contenedores']) ?> contenedor<?= count($f['contenedores']) > 1 ? 'es' : '' ?><?= $clientesFila ? ' · ' . e(implode(', ', array_slice($clientesFila, 0, 2))) . (count($clientesFila) > 2 ? ' y ' . (count($clientesFila) - 2) . ' más' : '') : '' ?></summary>
                         <ul>
                             <?php foreach ($f['contenedores'] as $c): ?>
-                                <li><strong><?= e($c['numero']) ?></strong> · Carpeta <?= e($c['carpeta']) ?><?= $c['cliente'] ? ' · ' . e($c['cliente']) : '' ?></li>
+                                <li><strong><?= e(Validacion::formatearContenedor($c['numero'])) ?></strong> · Carpeta <?= e($c['carpeta']) ?><?= $c['cliente'] ? ' · ' . e($c['cliente']) : '' ?></li>
                             <?php endforeach; ?>
                         </ul>
                     </details>

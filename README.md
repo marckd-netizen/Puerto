@@ -38,7 +38,9 @@ ocurrido hasta 2 horas antes.
 ## Clientes y contenedores (Lucía)
 
 - **Clientes** (`clientes.php`): RUT (12 dígitos) y nombre. Se cargan de a uno o pegando desde Excel.
-- **Contenedores** (`contenedores.php`): número (formato AAAAnnnnnnn), carpeta y cliente. También
+- **Contenedores** (`contenedores.php`): número, carpeta y cliente. El número se puede escribir
+  con o sin guiones o espacios. Se muestra y se envía a Lucía como `AAAA-123456-7`
+  (`formato_contenedor` en `config.php`; `'continuo'` lo envía sin guiones). También
   se pueden pegar desde Excel (Contenedor · Carpeta · RUT). Se valida el formato y se avisa si el
   dígito verificador del contenedor (ISO 6346) o del RUT no coincide.
 - `cron/contenedores.php` consulta cada contenedor activo en el webservice de Lucía. Si Lucía
@@ -68,7 +70,7 @@ habilita el acceso solo desde ciertas direcciones IP, la del servidor del sitio 
 **Prueba rápida sin PHP (Windows 10 u 11):** copiar `herramientas/lucia_prueba.bat` y
 `herramientas/lucia_prueba.ps1` en la misma carpeta y hacer doble clic en el `.bat`. Pide el
 contenedor, el rango de días, el usuario y la clave (una sola vez, sin mostrarla) y guarda en esa
-carpeta `wsdl.xml`, `respuesta_datoscont.xml` y `respuesta_fechas.xml`.
+carpeta `wsdl.xml` y las respuestas. La consulta por fechas se hace con y sin guiones, para comparar.
 
 **Primera prueba con el sitio instalado:**
 1. En `config.php` → `lucia`: `'modo' => 'soap'`, `usuario` y `clave`. **Solo en el servidor**, nunca en el repositorio.

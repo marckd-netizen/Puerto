@@ -191,6 +191,7 @@ verificar(!Tablero::ocultaPorServicio(['servicios' => []], $ocultos), 'un buque 
 echo "Validaciones\n";
 verificar(Validacion::normalizarContenedor(' csqu 305438-3 ') === 'CSQU3054383', 'contenedor: se normaliza "csqu 305438-3"');
 verificar(Validacion::digitoContenedorCorrecto('CSQU3054383'), 'contenedor: dígito verificador correcto (ejemplo ISO 6346)');
+verificar(Validacion::formatearContenedor('csqu3054383') === 'CSQU-305438-3' && Validacion::formatearContenedor('CSQU-305438-3') === 'CSQU-305438-3', 'contenedor: se muestra como AAAA-123456-7, tenga o no guiones');
 verificar(!Validacion::digitoContenedorCorrecto('CSQU3054384'), 'contenedor: detecta dígito verificador incorrecto');
 verificar(!Validacion::formatoContenedor('CSQ3054383') && !Validacion::formatoContenedor('CSQU305438'), 'contenedor: rechaza formatos que no son AAAAnnnnnnn');
 $rutBase = '21123456001';
@@ -210,7 +211,7 @@ $r = $cont->importarClientes("$rutOk;EMPRESA EJEMPLO SOCIEDAD ANONIMA");
 verificar($r['ok'] === 1 && $db3->query("SELECT nombre FROM clientes WHERE rut = '$rutOk'")->fetchColumn() === 'EMPRESA EJEMPLO SOCIEDAD ANONIMA', 'reimportar un RUT actualiza el nombre (separador ;)');
 $r = $cont->importarContenedores("Contenedor\tCarpeta\tRUT\nCSQU3054383\t2026-001\t$rutOk\nmsku 907032-3\t2026-002\t$rutOk\nTGHU8785330\t2026-003\nMSCU1234565\t2026-004\t210000000019\nABC123\t2026-005\nCSQU3054383\t2026-006\t999999999999\n");
 verificar($r['ok'] === 4 && count($r['errores']) === 2, 'importa 4 contenedores; rechaza formato inválido y cliente inexistente');
-verificar(count($r['avisos']) === 1 && str_contains($r['avisos'][0], 'MSCU1234565'), 'avisa el dígito verificador incorrecto de MSCU1234565');
+verificar(count($r['avisos']) === 1 && str_contains($r['avisos'][0], 'MSCU-123456-5'), 'avisa el dígito verificador incorrecto de MSCU1234565');
 $r = $cont->guardarContenedor('CSQU3054383', '2026-001', $rutOk);
 verificar($r['ok'] && (int) $db3->query('SELECT COUNT(*) FROM contenedores')->fetchColumn() === 4, 'el mismo contenedor y carpeta no se duplica');
 
@@ -237,7 +238,9 @@ verificar(array_sum(array_map('count', $porEscala)) === 3, 'el tablero recibe lo
 echo "Lucía por webservice (respuesta supuesta)\n";
 $soap = new LuciaSoap(['url' => 'http://ejemplo/awsdatcont.aspx?wsdl']);
 $sobre = $soap->sobre('CSQU3054383', 'LMF');
-verificar(str_contains($sobre, '<WSDatCont.DATOSCONT xmlns="LUCIAx">') && str_contains($sobre, '<Contenedor>CSQU3054383</Contenedor>') && str_contains($sobre, '<Quedatos>LMF</Quedatos>'), 'arma el sobre SOAP de DATOSCONT');
+verificar(str_contains($sobre, '<WSDatCont.DATOSCONT xmlns="LUCIAx">') && str_contains($sobre, '<Contenedor>CSQU-305438-3</Contenedor>') && str_contains($sobre, '<Quedatos>LMF</Quedatos>'), 'arma el sobre SOAP de DATOSCONT, con el contenedor en formato AAAA-123456-7');
+$continuo = new LuciaSoap(['url' => 'http://ejemplo/', 'formato_contenedor' => 'continuo']);
+verificar(str_contains($continuo->sobre('CSQU-305438-3', 'TOD'), '<Contenedor>CSQU3054383</Contenedor>'), "con formato_contenedor = 'continuo' se envía sin guiones");
 $r = $soap->interpretar(file_get_contents(__DIR__ . '/fixtures/lucia_respuesta_supuesta.xml'));
 verificar($r->encontrado && $r->buque === 'CAP SAN ARTEMISSIO' && $r->viaje === '641W' && $r->fecha === '2026-10-12 11:00', 'extrae buque, viaje y fecha (el registro más reciente de dos)');
 $vacia = $soap->interpretar(file_get_contents(__DIR__ . '/fixtures/lucia_respuesta_vacia_real.xml'));
@@ -247,7 +250,7 @@ verificar($sinBuque->encontrado && $sinBuque->buque === null && $sinBuque->detal
 verificar($soap->metodo() === 'DATOSCONTFECHAS', 'por defecto usa DATOSCONTFECHAS');
 verificar($soap->rango(strtotime('2026-10-14 12:00')) === ['2026-08-15', '2026-11-13'], 'rango por defecto: 60 días atrás y 30 adelante');
 $sobreF = $soap->sobreFechas('MRSU6111179', '2026-08-15', '2026-11-13');
-verificar(str_contains($sobreF, '<WSDatCont.DATOSCONTFECHAS xmlns="LUCIAx">') && str_contains($sobreF, '<Fechainicial>2026-08-15</Fechainicial>') && str_contains($sobreF, '<Fechafinal>2026-11-13</Fechafinal>'), 'arma el sobre de DATOSCONTFECHAS');
+verificar(str_contains($sobreF, '<Contenedor>MRSU-611117-9</Contenedor>') && str_contains($sobreF, '<WSDatCont.DATOSCONTFECHAS xmlns="LUCIAx">') && str_contains($sobreF, '<Fechainicial>2026-08-15</Fechainicial>') && str_contains($sobreF, '<Fechafinal>2026-11-13</Fechafinal>'), 'arma el sobre de DATOSCONTFECHAS');
 $otros = $soap->interpretar('<Envelope><Body><R><Item><NomBarco>MSC ADELE</NomBarco><NroVje>NA646R</NroVje></Item></R></Body></Envelope>', ['buque' => ['NomBarco'], 'viaje' => ['NroVje']]);
 verificar($otros->buque === 'MSC ADELE' && $otros->viaje === 'NA646R', 'acepta nombres de elementos configurados');
 try {

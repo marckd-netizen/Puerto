@@ -8,7 +8,7 @@ $pedido = file_get_contents('php://input');
 header('Content-Type: text/xml; charset=utf-8');
 $fechas = str_contains($pedido, '<WSDatCont.DATOSCONTFECHAS') && str_contains($_SERVER['HTTP_SOAPACTION'] ?? '', 'DATOSCONTFECHAS')
     && preg_match('#<Fechainicial>\d{4}-\d{2}-\d{2}</Fechainicial>#', $pedido);
-if (!$fechas || !str_contains($pedido, '<Contenedor>CSQU3054383</Contenedor>')) {
+if (!$fechas || !str_contains($pedido, '<Contenedor>CSQU-305438-3</Contenedor>')) {
     // Igual que la respuesta real para un contenedor sin datos
     readfile(dirname(__DIR__) . '/fixtures/lucia_respuesta_vacia_real.xml');
     exit;

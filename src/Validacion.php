@@ -16,6 +16,13 @@ final class Validacion
         return preg_replace('/[^A-Z0-9]/', '', strtoupper($s));
     }
 
+    /** "MSKU1234565" → "MSKU-123456-5" (formato que usa Lucía y como se lee habitualmente). */
+    public static function formatearContenedor(string $numero): string
+    {
+        $n = self::normalizarContenedor($numero);
+        return self::formatoContenedor($n) ? substr($n, 0, 4) . '-' . substr($n, 4, 6) . '-' . $n[10] : $numero;
+    }
+
     /** Formato AAAAnnnnnnn: 4 letras y 7 números. */
     public static function formatoContenedor(string $numero): bool
     {
