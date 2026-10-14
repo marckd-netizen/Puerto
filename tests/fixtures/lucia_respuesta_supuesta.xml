@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- RESPUESTA SUPUESTA (formato habitual de GeneXus), no es una respuesta real de Lucía.
+     Reemplazar por una real cuando se tenga, para ajustar los nombres de los elementos. -->
+<SOAP-ENV:Envelope xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <SOAP-ENV:Body>
+    <WSDatCont.DATOSCONTResponse xmlns="LUCIAx">
+      <Sdtdatoscont>
+        <SDTDatosCont.SDTDatosContItem>
+          <Tipo>LMF</Tipo>
+          <Manifiesto>2026/012345</Manifiesto>
+          <Buque>CAP SAN ARTEMISSIO</Buque>
+          <Viaje>641W</Viaje>
+          <FechaArribo>2026-10-12T11:00:00</FechaArribo>
+          <Linea>12</Linea>
+        </SDTDatosCont.SDTDatosContItem>
+        <SDTDatosCont.SDTDatosContItem>
+          <Tipo>LMF</Tipo>
+          <Manifiesto>2026/011111</Manifiesto>
+          <Buque>BUQUE ANTERIOR</Buque>
+          <Viaje>001</Viaje>
+          <FechaArribo>2026-09-01T08:00:00</FechaArribo>
+          <Linea>3</Linea>
+        </SDTDatosCont.SDTDatosContItem>
+      </Sdtdatoscont>
+    </WSDatCont.DATOSCONTResponse>
+  </SOAP-ENV:Body>
+</SOAP-ENV:Envelope>

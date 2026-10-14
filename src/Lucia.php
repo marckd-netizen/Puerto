@@ -72,6 +72,7 @@ final class Lucia
     public static function crear(array $cfg): ConsultaLucia
     {
         return match ($cfg['modo'] ?? 'pendiente') {
+            'soap' => new LuciaSoap($cfg),
             'archivo' => new LuciaArchivo($cfg['archivo']),
             'pendiente' => new LuciaNoConfigurada(),
             default => throw new RuntimeException('Modo de Lucía desconocido: ' . $cfg['modo']),

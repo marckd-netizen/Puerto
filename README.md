@@ -50,11 +50,33 @@ ocurrido hasta 2 horas antes.
   "Solo con contenedores míos". Un buque con contenedores propios nunca se oculta por servicio.
 - Cuando un contenedor ya no interesa se **archiva**: deja de consultarse y de mostrarse.
 
-**Estado de la integración con Lucía:** pendiente. Falta conocer el webservice (dirección,
-método, parámetros y un ejemplo de respuesta). Mientras tanto se puede probar con
-`'lucia' => ['modo' => 'archivo']`, que usa respuestas simuladas de
-`tests/fixtures/lucia_simulada.json`. **El usuario y la contraseña de Lucía van solo en el
-`config.php` del servidor**, nunca en el repositorio.
+### Webservice de Lucía
+Se usa `awsdatcont.aspx`, método **DATOSCONT**, con `Quedatos = LMF`: líneas de manifiesto de
+ingreso con ese contenedor que todavía no ingresaron a stock, o sea contenedores que vienen en un
+barco. Se puede cambiar a `TOD` en `config.php`.
+
+La dirección `lucia.srv-luciatmgx16` es de la red interna de la Aduana: el servidor del sitio
+tiene que poder llegar a ella (red de la Aduana o VPN).
+
+**Primera prueba (no se sabe todavía qué devuelve):**
+1. En `config.php` → `lucia`: `'modo' => 'soap'`, `usuario` y `clave`. **Solo en el servidor**, nunca en el repositorio.
+2. Con un contenedor que venga en un barco próximo:
+   ```bash
+   php cron/lucia_diagnostico.php MSKU1234567
+   php cron/lucia_diagnostico.php MSKU1234567 TOD
+   ```
+   Muestra el pedido, la respuesta completa y qué buque, viaje y fecha entendió el sistema.
+3. Si no encuentra el buque, agregá en `config.php` → `lucia` → `campos` los nombres de los
+   elementos de la respuesta. Por ejemplo, `'buque' => ['NomBuque']`.
+
+Posibles errores en la primera prueba:
+- **"Lucía rechazó el usuario o la contraseña (HTTP 401)":** puede que Lucía no use autenticación
+  HTTP básica, sino que pida las credenciales de otra forma (por ejemplo, dentro del mensaje).
+  Hay que verlo con la respuesta.
+- **Error de certificado:** si Lucía usa un certificado de una autoridad interna, poné la ruta
+  del `.pem` en `ca_bundle`.
+
+La respuesta puede traer datos de clientes: tachalos antes de compartirla.
 
 ## Acceso
 

@@ -234,5 +234,55 @@ verificar($r['consultados'] === 4, 'a las 2 horas se vuelven a consultar');
 $porEscala = $cont->porEscala();
 verificar(array_sum(array_map('count', $porEscala)) === 3, 'el tablero recibe los 3 contenedores vinculados, agrupados por escala');
 
+echo "Lucía por webservice (respuesta supuesta)\n";
+$soap = new LuciaSoap(['url' => 'http://ejemplo/awsdatcont.aspx?wsdl']);
+$sobre = $soap->sobre('CSQU3054383', 'LMF');
+verificar(str_contains($sobre, '<WSDatCont.DATOSCONT xmlns="LUCIAx">') && str_contains($sobre, '<Contenedor>CSQU3054383</Contenedor>') && str_contains($sobre, '<Quedatos>LMF</Quedatos>'), 'arma el sobre SOAP de DATOSCONT');
+$r = $soap->interpretar(file_get_contents(__DIR__ . '/fixtures/lucia_respuesta_supuesta.xml'));
+verificar($r->encontrado && $r->buque === 'CAP SAN ARTEMISSIO' && $r->viaje === '641W' && $r->fecha === '2026-10-12 11:00', 'extrae buque, viaje y fecha (el registro más reciente de dos)');
+$vacia = $soap->interpretar('<Envelope xmlns="http://schemas.xmlsoap.org/soap/envelope/"><Body><WSDatCont.DATOSCONTResponse xmlns="LUCIAx"><Sdtdatoscont/></WSDatCont.DATOSCONTResponse></Body></Envelope>');
+verificar(!$vacia->encontrado, 'respuesta vacía → no encontrado');
+$otros = $soap->interpretar('<Envelope><Body><R><Item><NomBarco>MSC ADELE</NomBarco><NroVje>NA646R</NroVje></Item></R></Body></Envelope>', ['buque' => ['NomBarco'], 'viaje' => ['NroVje']]);
+verificar($otros->buque === 'MSC ADELE' && $otros->viaje === 'NA646R', 'acepta nombres de elementos configurados');
+try {
+    $soap->interpretar('<soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/"><soap:Body><soap:Fault><faultcode>soap:Server</faultcode><faultstring>Contenedor inválido</faultstring></soap:Fault></soap:Body></soap:Envelope>');
+    verificar(false, 'un SOAP Fault se informa como error');
+} catch (RuntimeException $e) {
+    verificar(str_contains($e->getMessage(), 'Contenedor inválido'), 'un SOAP Fault se informa como error');
+}
+try {
+    new LuciaSoap(['url' => '']);
+    verificar(false, 'sin URL → error de configuración');
+} catch (LuciaSinConfigurar) {
+    verificar(true, 'sin URL → error de configuración');
+}
+
+// Prueba de punta a punta contra un falso servidor de Lucía con usuario y contraseña
+$puerto = 18765;
+$proc = proc_open([PHP_BINARY, '-S', "127.0.0.1:$puerto", '-t', __DIR__ . '/lucia_mock'], [1 => ['file', '/dev/null', 'w'], 2 => ['file', '/dev/null', 'w']], $pipes);
+for ($i = 0; $i < 50 && !@fsockopen('127.0.0.1', $puerto); $i++) {
+    usleep(100000);
+}
+try {
+    $url = "http://127.0.0.1:$puerto/index.php?wsdl";
+    $real = new LuciaSoap(['url' => $url, 'usuario' => 'usuario-prueba', 'clave' => 'clave-prueba', 'quedatos' => 'LMF']);
+    $r = $real->consultar('CSQU3054383');
+    verificar($r->encontrado && $r->buque === 'CAP SAN ARTEMISSIO', 'consulta por la red con usuario y contraseña');
+    verificar(!$real->consultar('MSKU9070323')->encontrado, 'contenedor sin datos → no encontrado');
+    try {
+        (new LuciaSoap(['url' => $url, 'usuario' => 'usuario-prueba', 'clave' => 'mala']))->consultar('CSQU3054383');
+        verificar(false, 'clave incorrecta → error claro que detiene las consultas');
+    } catch (LuciaSinConfigurar $e) {
+        verificar(str_contains($e->getMessage(), 'contraseña'), 'clave incorrecta → error claro que detiene las consultas');
+    }
+    // Y el vínculo con el tablero: CSQU3054383 viene en CAP SAN ARTEMISSIO (TCP)
+    $db3->exec("UPDATE contenedores SET lucia_consulta = NULL WHERE numero = 'CSQU3054383'");
+    $cont->consultarPendientes($real, ['pausa_segundos' => 0], $ahoraLucia + 5 * 3600);
+    $b = $db3->query("SELECT e.buque FROM contenedores c JOIN escalas e ON e.id = c.escala_id WHERE c.numero = 'CSQU3054383'")->fetchColumn();
+    verificar($b === 'CAP SAN ARTEMISSIO', 'CSQU3054383 queda vinculado a CAP SAN ARTEMISSIO');
+} finally {
+    proc_terminate($proc);
+}
+
 echo $fallas ? "\n$fallas prueba(s) fallaron\n" : "\nTodas las pruebas pasaron\n";
 exit($fallas ? 1 : 0);

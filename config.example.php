@@ -30,14 +30,27 @@ return [
 
     // Consulta de contenedores en Lucía (Aduana).
     'lucia' => [
-        // 'pendiente': todavía no configurado.
-        // 'archivo': simulación con un JSON (para pruebas), ver tests/fixtures/lucia_simulada.json.
+        // 'soap': webservice real. 'archivo': simulación con un JSON (para pruebas).
+        // 'pendiente': sin configurar.
         'modo'    => 'pendiente',
-        'archivo' => __DIR__ . '/tests/fixtures/lucia_simulada.json',
-        // Credenciales del webservice: SOLO en config.php del servidor, nunca en el repositorio.
-        'url'      => '',
+        'url'     => 'https://lucia.srv-luciatmgx16/Luciaws/awsdatcont.aspx?wsdl',
+        // Qué datos pedir (método DATOSCONT). LMF: líneas de manifiesto de ingreso aún no
+        // ingresadas a stock, o sea contenedores que vienen en un barco. TOD: todos.
+        'quedatos' => 'LMF',
+        'soap_action' => 'LUCIAxaction/AWSDATCONT.DATOSCONT',
+        // Credenciales: SOLO en config.php del servidor, nunca en el repositorio.
+        'autenticacion' => 'basic',
         'usuario'  => '',
         'clave'    => '',
+        // Si el certificado de Lucía es de una autoridad interna, ruta al archivo .pem de esa autoridad.
+        'ca_bundle' => '',
+        // Nombres adicionales de los elementos de la respuesta (si el diagnóstico muestra otros).
+        'campos' => [
+            'buque' => [],
+            'viaje' => [],
+            'fecha' => [],
+        ],
+        'archivo' => __DIR__ . '/tests/fixtures/lucia_simulada.json',
         // Cada cuántas horas se vuelve a consultar un mismo contenedor.
         'reconsultar_horas' => 2,
         // Pausa entre consultas para no saturar el servicio.
