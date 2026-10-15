@@ -4,8 +4,7 @@
 #   1. wsdl.xml                    descripcion del servicio (sin datos de clientes)
 #   2. respuesta_datoscont.xml     metodo DATOSCONT con Quedatos = TOD
 #   3. respuesta_fechas.xml        metodo DATOSCONTFECHAS con un rango de fechas amplio
-#   4. respuesta_fechas_sin_guiones.xml   lo mismo, con el contenedor sin guiones (para comparar)
-#   5. respuesta_manifiesto.xml    manifiesto (afMicXmlunif) con la clave que trae la respuesta 3,
+#   4. respuesta_manifiesto.xml    manifiesto (afMicXmlunif) con la clave que trae la respuesta 3,
 #                                  para ver si informa el nombre del buque
 # La clave se guarda solo durante la prueba en un archivo temporal que se borra al final.
 
@@ -90,10 +89,7 @@ try {
 "@
     Consultar "3) DATOSCONTFECHAS del $desde al $hasta, contenedor $contGuiones" 'LUCIAxaction/AWSDATCONT.DATOSCONTFECHAS' $fechas 'pedido_fechas.xml' 'respuesta_fechas.xml'
 
-    $sinGuiones = $fechas.Replace("<Contenedor>$contGuiones</Contenedor>", "<Contenedor>$cont</Contenedor>")
-    Consultar "4) DATOSCONTFECHAS del $desde al $hasta, contenedor $cont (sin guiones)" 'LUCIAxaction/AWSDATCONT.DATOSCONTFECHAS' $sinGuiones 'pedido_fechas_sin_guiones.xml' 'respuesta_fechas_sin_guiones.xml'
-
-    # 5) Manifiesto: la clave sale de LINMANIF (TPOTRANSP, TIPOMIC, NROMIC, DEPOSITO, FECHAARRIB)
+    # 4) Manifiesto: la clave sale de LINMANIF (TPOTRANSP, TIPOMIC, NROMIC, DEPOSITO, FECHAARRIB)
     $clave = $null
     try {
         [xml]$doc = Get-Content -LiteralPath (Join-Path $PSScriptRoot 'respuesta_fechas.xml') -Raw -Encoding UTF8
@@ -112,7 +108,7 @@ try {
     }
     if ($clave) {
         Write-Host ''
-        Write-Host "== 5) Manifiesto $clave"
+        Write-Host "== 4) Manifiesto $clave"
         $respManif = Join-Path $PSScriptRoot 'respuesta_manifiesto.xml'
         & curl.exe -sS -K $cfg -o $respManif -w '   HTTP %{http_code}' ($urlManifiesto + '?' + $clave)
         Write-Host ''

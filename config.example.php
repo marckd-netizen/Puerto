@@ -38,8 +38,6 @@ return [
         'metodo'        => 'DATOSCONTFECHAS',
         'dias_atras'    => 60,
         'dias_adelante' => 30,
-        // Cómo se envía el número a Lucía: 'guiones' (AAAA-123456-7) o 'continuo' (AAAA1234567).
-        'formato_contenedor' => 'guiones',
         // Solo para DATOSCONT: LMF, DUA, STK, MSL, MSI o TOD.
         'quedatos'      => 'TOD',
         // Credenciales: SOLO en config.php del servidor, nunca en el repositorio.

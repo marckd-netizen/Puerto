@@ -60,12 +60,10 @@ final class LuciaSoap implements ConsultaLucia
         ];
     }
 
-    /** Número como lo espera Lucía: AAAA-123456-7 ('guiones', por defecto) o AAAA1234567 ('continuo'). */
+    /** Lucía solo encuentra el contenedor con guiones: AAAA-123456-7 (sin guiones no devuelve nada). */
     public function numeroParaLucia(string $contenedor): string
     {
-        return ($this->cfg['formato_contenedor'] ?? 'guiones') === 'continuo'
-            ? Validacion::normalizarContenedor($contenedor)
-            : Validacion::formatearContenedor($contenedor);
+        return Validacion::formatearContenedor($contenedor);
     }
 
     public function sobreFechas(string $contenedor, string $desde, string $hasta): string
