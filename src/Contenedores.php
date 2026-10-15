@@ -21,15 +21,16 @@ final class Contenedores
     /**
      * Buque de un manifiesto, guardado en la tabla manifiestos para no repetir la consulta:
      * si ya se conoce el buque no se vuelve a preguntar; si no, se reintenta pasadas unas horas.
-     * @return array{buque: ?string, viaje: ?string, fecha: ?string}
+     * @return array{buque: ?string, viaje: ?string, fecha: ?string, detalle: array}
      */
     public function buqueDeManifiesto(array $clave, int $ahora): array
     {
         $id = implode(',', $clave);
-        $st = $this->db->prepare('SELECT buque, viaje, fecha, consultado FROM manifiestos WHERE clave = ?');
+        $st = $this->db->prepare('SELECT buque, viaje, fecha, consultado, detalle FROM manifiestos WHERE clave = ?');
         $st->execute([$id]);
         $guardado = $st->fetch();
         if ($guardado && ($guardado['buque'] !== null || strtotime($guardado['consultado']) > $ahora - $this->reconsultarHoras * 3600)) {
+            $guardado['detalle'] = json_decode((string) $guardado['detalle'], true) ?: [];
             return $guardado;
         }
 
@@ -37,7 +38,7 @@ final class Contenedores
         $this->db->prepare('DELETE FROM manifiestos WHERE clave = ?')->execute([$id]);
         $this->db->prepare('INSERT INTO manifiestos (clave, buque, viaje, fecha, consultado, detalle) VALUES (?, ?, ?, ?, ?, ?)')
             ->execute([$id, $m->buque, $m->viaje, $m->fecha, date('Y-m-d H:i:s', $ahora), json_encode($m->detalle, JSON_UNESCAPED_UNICODE)]);
-        return ['buque' => $m->buque, 'viaje' => $m->viaje, 'fecha' => $m->fecha];
+        return ['buque' => $m->buque, 'viaje' => $m->viaje, 'fecha' => $m->fecha, 'detalle' => $m->detalle];
     }
 
     // ---------------------------------------------------------------- clientes
@@ -270,6 +271,8 @@ final class Contenedores
         $fecha = $r->fecha;
         $manifiestoUsado = null;
         $avisoManifiesto = null;
+        $detalle = $r->detalle;
+        $detalle['resumen'] ??= [];
         if ($buque === null && $this->manifiestos !== null) {
             foreach ($r->detalle['claves_manifiesto'] ?? [] as $clave) {
                 try {
@@ -283,6 +286,13 @@ final class Contenedores
                 }
                 if ($m['buque'] !== null) {
                     [$buque, $viaje, $fecha, $manifiestoUsado] = [$m['buque'], $m['viaje'], $m['fecha'] ?: $r->fecha, $clave[2]];
+                    $cab = $m['detalle']['cabecera'] ?? [];
+                    $suyo = $m['detalle']['contenedores'][Validacion::normalizarContenedor($c['numero'])] ?? null;
+                    array_unshift($detalle['resumen'], trim("Manifiesto {$clave[2]}: $buque"
+                        . ($m['fecha'] ? ' · llegada ' . substr(Texto::mostrarFecha($m['fecha']), 0, 5) : '')
+                        . (($cab['AgeTraRSoc'] ?? '') !== '' ? " · agencia {$cab['AgeTraRSoc']}" : '')
+                        . (($cab['CGLugPart'] ?? '') !== '' ? " · desde {$cab['CGLugPart']}" : '')
+                        . ($suyo ? " · conocimiento {$suyo['conocimiento']}" . ($suyo['consignatario'] !== '' ? " ({$suyo['consignatario']})" : '') : '')));
                     break;
                 }
             }
@@ -308,7 +318,7 @@ final class Contenedores
                     $r->terminal !== null && $r->fecha !== null => "Ningún buque del tablero operaba en {$r->terminal} el " . Texto::mostrarFecha($r->fecha),
                     default => 'Lucía tiene datos del contenedor (' . implode(', ', $r->detalle['secciones_con_datos'] ?? []) . '), pero todavía no se pudo ubicar el buque',
                 } . ($avisoManifiesto ? " · $avisoManifiesto" : '')), 0, 255) ?: null,
-                json_encode($r->detalle, JSON_UNESCAPED_UNICODE),
+                json_encode($detalle, JSON_UNESCAPED_UNICODE),
                 $escalaId,
                 $escalaId === null ? null : ($mismaEscala ? $c['vinculado'] : $cuando),
                 $c['id'],

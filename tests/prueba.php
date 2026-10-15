@@ -385,5 +385,44 @@ $r = $cont4->consultarPendientes($luciaFija, ['pausa_segundos' => 0], strtotime(
 $f = $db4->query("SELECT e.buque, c.lucia_mensaje FROM contenedores c JOIN escalas e ON e.id = c.escala_id WHERE c.numero = 'HAMU4640084'")->fetch();
 verificar($r['errores'] === [] && $f['buque'] === 'BUQUE DE LA DESCARGA' && $f['lucia_mensaje'] !== null && str_contains($f['lucia_mensaje'], 'servicio caído'), 'si falla el manifiesto, se usa terminal + fecha y se avisa');
 
+echo "Manifiesto real (afMicXmlunif, 277301) → buque del line-up de TCP\n";
+$manifReal = (new LuciaManifiesto([]))->interpretar(file_get_contents(__DIR__ . '/fixtures/lucia_manifiesto_real_reducido.xml'));
+verificar($manifReal->buque === 'CAP SAN ARTEMISSIO' && $manifReal->fecha === '2026-10-12 00:00', 'estructura real: buque (CGNomNave) y llegada (CGFchLleg)');
+verificar($manifReal->detalle['cabecera']['AgeTraRSoc'] === 'MAERSK URUGUAY S A' && $manifReal->detalle['cabecera']['CGLugPart'] === 'CN SHA', 'cabecera: agencia y origen');
+verificar(($manifReal->detalle['contenedores']['TGHU8785330']['conocimiento'] ?? '') === 'CONOCIMIENTO0002', 'cada contenedor con su conocimiento');
+
+$db5 = Db::conectar(['driver' => 'sqlite', 'sqlite_path' => ':memory:']);
+(new Sincronizador($db5, $base['campos_vigilados']))->sincronizar('TCP', leer($lector, $base, 'TCP', 'tcp_lineup_1.json'), '2026-10-07 08:00:00');
+$cont5 = new Contenedores($db5);
+$cont5->guardarContenedor('HAMU-464008-4', '2026-900');
+// Contenedor todavía no descargado: solo línea de manifiesto 277301, sin convalidada
+$respSinDescarga = preg_replace('#<CONVALIDADA>.*</CONVALIDADA>#s', '<CONVALIDADA />', file_get_contents(__DIR__ . '/fixtures/lucia_respuesta_con_datos.xml'));
+$respSinDescarga = str_replace('<NROMIC>291201     </NROMIC>', '<NROMIC>277301     </NROMIC>', $respSinDescarga);
+$luciaSinDescarga = new class ($respSinDescarga) implements ConsultaLucia {
+    public function __construct(private string $xml) {}
+    public function consultar(string $contenedor): ResultadoLucia
+    {
+        return (new LuciaSoap(['url' => 'http://x/']))->interpretar($this->xml, [], strtotime('2026-10-10 12:00'));
+    }
+};
+$manif5 = new class implements BuscadorManifiesto {
+    public array $claves = [];
+    public function consultar(array $clave): ResultadoManifiesto
+    {
+        $this->claves[] = implode(',', $clave);
+        return (new LuciaManifiesto([]))->interpretar(file_get_contents(__DIR__ . '/fixtures/lucia_manifiesto_real_reducido.xml'));
+    }
+};
+$cont5->usarManifiestos($manif5);
+$cont5->consultarPendientes($luciaSinDescarga, ['pausa_segundos' => 0], strtotime('2026-10-10 12:00'));
+verificar($manif5->claves === ['1,0,277301,1650,20260101'], 'consulta el manifiesto con la clave de LINMANIF');
+$f5 = $db5->query("SELECT e.terminal, e.buque, e.viaje, c.lucia_mensaje, c.lucia_detalle FROM contenedores c JOIN escalas e ON e.id = c.escala_id")->fetch();
+verificar($f5 && $f5['terminal'] === 'TCP' && $f5['buque'] === 'CAP SAN ARTEMISSIO' && $f5['viaje'] === 'Sem. 42', 'HAMU-464008-4 queda vinculado a CAP SAN ARTEMISSIO (TCP, semana 42) antes de llegar');
+verificar(str_contains((string) $f5['lucia_mensaje'], 'según manifiesto 277301'), 'se aclara que el buque sale del manifiesto');
+$primera = json_decode($f5['lucia_detalle'], true)['resumen'][0] ?? '';
+verificar($primera === 'Manifiesto 277301: CAP SAN ARTEMISSIO · llegada 12/10 · agencia MAERSK URUGUAY S A · desde CN SHA · conocimiento CONOCIMIENTO0001 (CONSIGNATARIO UNO)', 'resumen: buque, llegada, agencia, origen y conocimiento');
+$guardado = json_decode((string) $db5->query('SELECT detalle FROM manifiestos')->fetchColumn(), true);
+verificar(isset($guardado['cabecera'], $guardado['contenedores']) && !isset($guardado['respuesta']), 'del manifiesto se guarda solo cabecera y contenedores, no la respuesta entera');
+
 echo $fallas ? "\n$fallas prueba(s) fallaron\n" : "\nTodas las pruebas pasaron\n";
 exit($fallas ? 1 : 0);

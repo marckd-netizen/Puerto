@@ -1,0 +1,100 @@
+<?xml version = "1.0" encoding = "ISO-8859-1"?>
+<!-- Estructura real de afMicXmlunif (manifiesto 277301, CAP SAN ARTEMISSIO). Reducido a 2 conocimientos ficticios; RUT y consignatarios reemplazados. -->
+
+<MANIFIESTO>
+102773011650  20260101         0         0
+	<FILA_MANIFIESTO FILA_MANIFIESTO="1">
+		<CGTpoTrans>1  </CGTpoTrans>
+		<CGTpoMic>0</CGTpoMic>
+		<CGNroMic>277301     </CGNroMic>
+		<RGDepId>1650</RGDepId>
+		<CGFchArr>20260101</CGFchArr>
+		<CGNomAgeTra> </CGNomAgeTra>
+		<CGCodAgeTra>210000000019</CGCodAgeTra>
+		<AgeTraRSoc>MAERSK URUGUAY S A</AgeTraRSoc>
+		<CGLugPart>CN SHA</CGLugPart>
+		<CGLugDest>UY MVD</CGLugDest>
+		<CGFchNum>20261007</CGFchNum>
+		<CGMICEst>INI</CGMICEst>
+		<CGMatNave>9V2238</CGMatNave>
+		<CGNacNave>702</CGNacNave>
+		<CGNomNave>CAP SAN ARTEMISSIO            </CGNomNave>
+		<CGFchLleg>20261012</CGFchLleg>
+		<CGFchSal>20261012</CGFchSal>
+		<CGLugPartC>                              </CGLugPartC>
+		<CGLugDestC>                              </CGLugDestC>
+		<CGNroMicDB>                         </CGNroMicDB>
+		<CGLastre>N</CGLastre>
+		<CGMFchOfi>0</CGMFchOfi>
+		<CGPasiOri>   </CGPasiOri>
+		<CGPasiDst>   </CGPasiDst>
+		<CGAduIng>   </CGAduIng>
+		<CGAduSal>   </CGAduSal>
+		<CGMatCabTra> </CGMatCabTra>
+		<CGMatRem> </CGMatRem>
+		<CGMatSemRem> </CGMatSemRem>
+		<ModificacionPendiente>N</ModificacionPendiente>
+		<CONOCIMIENTO>
+			<FILA_CONOCIMIENTO FILA_CONOCIMIENTO="1">
+				<CGNroConDNA>1</CGNroConDNA>
+				<CGNroCon>CONOCIMIENTO0001         </CGNroCon>
+				<CGTpoCon>BM </CGTpoCon>
+				<CGRucAgeCar>210000000019</CGRucAgeCar>
+				<CGPtoEmbar>CN SHA</CGPtoEmbar>
+				<CGPtoDesca>UY MVD</CGPtoDesca>
+				<CGConEst>INI</CGConEst>
+				<CGRSocConsig>CONSIGNATARIO UNO</CGRSocConsig>
+				<LINEA_CONOCIMIENTO>
+					<FILA_LINEA_CONOCIMIENTO FILA_LINEA_CONOCIMIENTO="1">
+						<CGNroLin>1</CGNroLin>
+						<CGDesc>MERCADERIA DE PRUEBA</CGDesc>
+						<LINEA_CONTENEDORES>
+							<FILA_LINEA_CONTENEDORES FILA_LINEA_CONTENEDORES="1">
+								<CGNroConLin>HAMU-464008-4    </CGNroConLin>
+								<CGBultsCon>10.000</CGBultsCon>
+								<CGRCLinEst>INI</CGRCLinEst>
+								<ModificacionPendiente>N</ModificacionPendiente>
+							</FILA_LINEA_CONTENEDORES>
+						</LINEA_CONTENEDORES>
+					</FILA_LINEA_CONOCIMIENTO>
+				</LINEA_CONOCIMIENTO>
+			</FILA_CONOCIMIENTO>
+			<FILA_CONOCIMIENTO FILA_CONOCIMIENTO="2">
+				<CGNroConDNA>2</CGNroConDNA>
+				<CGNroCon>CONOCIMIENTO0002         </CGNroCon>
+				<CGTpoCon>BM </CGTpoCon>
+				<CGRucAgeCar>210000000019</CGRucAgeCar>
+				<CGPtoEmbar>CN SHA</CGPtoEmbar>
+				<CGPtoDesca>UY MVD</CGPtoDesca>
+				<CGConEst>INI</CGConEst>
+				<CGRSocConsig>CONSIGNATARIO DOS</CGRSocConsig>
+				<LINEA_CONOCIMIENTO>
+					<FILA_LINEA_CONOCIMIENTO FILA_LINEA_CONOCIMIENTO="1">
+						<CGNroLin>1</CGNroLin>
+						<CGDesc>OTRA MERCADERIA</CGDesc>
+						<LINEA_CONTENEDORES>
+							<FILA_LINEA_CONTENEDORES FILA_LINEA_CONTENEDORES="1">
+								<CGNroConLin>CSQU-305438-3    </CGNroConLin>
+								<CGBultsCon>10.000</CGBultsCon>
+								<CGRCLinEst>INI</CGRCLinEst>
+								<ModificacionPendiente>N</ModificacionPendiente>
+							</FILA_LINEA_CONTENEDORES>
+							<FILA_LINEA_CONTENEDORES FILA_LINEA_CONTENEDORES="2">
+								<CGNroConLin>TGHU-878533-0    </CGNroConLin>
+								<CGBultsCon>10.000</CGBultsCon>
+								<CGRCLinEst>INI</CGRCLinEst>
+								<ModificacionPendiente>N</ModificacionPendiente>
+							</FILA_LINEA_CONTENEDORES>
+						</LINEA_CONTENEDORES>
+					</FILA_LINEA_CONOCIMIENTO>
+				</LINEA_CONOCIMIENTO>
+			</FILA_CONOCIMIENTO>
+		</CONOCIMIENTO>
+	</FILA_MANIFIESTO>
+	<CONTENEDOR>
+		<FILA_CONTENEDOR FILA_CONTENEDOR="1">
+			<CGNroConte>HAMU-464008-4    </CGNroConte>
+			<CGCodTamId>42GP      </CGCodTamId>
+		</FILA_CONTENEDOR>
+	</CONTENEDOR>
+</MANIFIESTO>

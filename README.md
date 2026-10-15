@@ -72,15 +72,18 @@ Por eso el buque se busca así, en este orden:
    NroMic, Deposito, FechaArribo). Con esa clave se consulta el servicio de manifiestos
    (`afMicXmlunif.aspx?1,0,291201,1650,20260101`, documentado en la
    [wiki de la Aduana](https://apliwiki.aduanas.gub.uy/WikiNovedades/wiki.aspx?8217,WEBSERVICES,)) y se toma
-   el nombre del buque. Con ese nombre se vincula la escala del tablero. Cada manifiesto se guarda
-   en la tabla `manifiestos`, así varios contenedores del mismo manifiesto generan una sola consulta.
-   *Falta ver una respuesta real del manifiesto* para confirmar en qué elemento viene el buque.
+   el nombre del buque (`CGNomNave`) y la fecha de llegada (`CGFchLleg`). Con ese nombre se vincula
+   la escala del tablero, aunque el contenedor todavía no haya llegado. Confirmado con una respuesta
+   real: el manifiesto 277301 trae CAP SAN ARTEMISSIO, llegada 12/10, agencia MAERSK URUGUAY.
+   La respuesta trae el manifiesto entero (puede pesar varios MB, con todos los conocimientos y
+   contenedores). Se guarda en la tabla `manifiestos` solo la cabecera y, por contenedor, su
+   conocimiento, así varios contenedores del mismo manifiesto generan una sola consulta.
 2. **Por terminal y fecha de descarga.** Si lo anterior no da resultado: la terminal sale del operador de la convalidada
    ("TERMINAL CUENCA DEL PLATA" → TCP) o del depósito (1650 → TCP; falta el de Montecon), y la fecha,
    de la descarga. Se elige el buque que operaba en esa terminal en ese momento (entre ETB y ETD).
 
 En la página se aclara de dónde salió el buque ("según manifiesto 291201" o "deducido por terminal y fecha").
-Además, cada contenedor muestra un resumen: descarga, origen y destino, manifiesto y liberación, DUA,
+Además, cada contenedor muestra un resumen: buque, llegada, agencia y conocimiento según el manifiesto; descarga, origen y destino, manifiesto y liberación, DUA,
 mensajes simplificados, último movimiento de stock, tránsito e incautaciones.
 
 Dirección: `https://servicios.aduanas.gub.uy/luciaws/awsdatcont.aspx?wsdl`. Si la Aduana

@@ -60,6 +60,11 @@ final class LuciaManifiesto implements BuscadorManifiesto
 
     public function interpretar(string $xml): ResultadoManifiesto
     {
+        $real = $this->interpretarMicXml($xml);
+        if ($real !== null) {
+            return $real;
+        }
+        // Otra estructura: búsqueda genérica por nombres de elemento.
         $datos = LuciaSoap::xmlComoArray($xml);
         if ($datos === null) {
             throw new RuntimeException('La respuesta del manifiesto no es XML válido: ' . mb_substr(trim(strip_tags($xml)), 0, 150));
@@ -70,6 +75,57 @@ final class LuciaManifiesto implements BuscadorManifiesto
             return self::primerValor($datos, $alias, $campo === 'buque');
         };
         return new ResultadoManifiesto($buscar('buque'), $buscar('viaje'), Texto::fecha(self::fechaLucia($buscar('fecha'))), $datos);
+    }
+
+    /**
+     * Estructura real de afMicXmlunif (respuesta vista en octubre 2026, ISO-8859-1):
+     *   MANIFIESTO > FILA_MANIFIESTO (cabecera: CGNomNave, CGFchLleg, CGMatNave, AgeTraRSoc, CGLugPart, CGMICEst...)
+     *     > CONOCIMIENTO > FILA_CONOCIMIENTO (CGNroCon, CGRSocConsig...)
+     *       > LINEA_CONOCIMIENTO > FILA_LINEA_CONOCIMIENTO (CGDesc...) > LINEA_CONTENEDORES > FILA_LINEA_CONTENEDORES (CGNroConLin)
+     *   MANIFIESTO > CONTENEDOR > FILA_CONTENEDOR (CGNroConte, CGCodTamId...)
+     * La respuesta trae el manifiesto entero (puede pesar varios MB): se guarda solo la cabecera y,
+     * por contenedor, su conocimiento.
+     */
+    private function interpretarMicXml(string $xml): ?ResultadoManifiesto
+    {
+        $previo = libxml_use_internal_errors(true);
+        $doc = simplexml_load_string($xml, options: LIBXML_NONET | LIBXML_NOCDATA | LIBXML_PARSEHUGE);
+        libxml_use_internal_errors($previo);
+        if ($doc === false || !isset($doc->FILA_MANIFIESTO)) {
+            return null;
+        }
+
+        $cab = [];
+        foreach ($doc->FILA_MANIFIESTO->children() as $nombre => $valor) {
+            if ($valor->count() === 0) {
+                $cab[$nombre] = trim((string) $valor);
+            }
+        }
+
+        $contenedores = [];
+        foreach ($doc->FILA_MANIFIESTO->CONOCIMIENTO->FILA_CONOCIMIENTO ?? [] as $con) {
+            foreach ($con->LINEA_CONOCIMIENTO->FILA_LINEA_CONOCIMIENTO ?? [] as $linea) {
+                foreach ($linea->LINEA_CONTENEDORES->FILA_LINEA_CONTENEDORES ?? [] as $lc) {
+                    $numero = Validacion::normalizarContenedor((string) $lc->CGNroConLin);
+                    if ($numero !== '') {
+                        $contenedores[$numero] ??= [
+                            'conocimiento'  => trim((string) $con->CGNroCon),
+                            'consignatario' => trim((string) $con->CGRSocConsig),
+                            'descripcion'   => trim((string) $linea->CGDesc),
+                        ];
+                    }
+                }
+            }
+        }
+
+        $buque = ($cab['CGNomNave'] ?? '') !== '' ? $cab['CGNomNave'] : null;
+        $llegada = self::fechaLucia($cab['CGFchLleg'] ?? null);
+        return new ResultadoManifiesto(
+            $buque,
+            null, // Lucía no informa el número de viaje del buque (CGMatNave es la matrícula)
+            ($llegada && $llegada !== '0') ? Texto::fecha($llegada) : null,
+            ['cabecera' => $cab, 'contenedores' => $contenedores],
+        );
     }
 
     /** Primer valor no vacío de un elemento con alguno de esos nombres (por orden de preferencia del alias). */
