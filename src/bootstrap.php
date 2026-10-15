@@ -6,11 +6,12 @@ declare(strict_types=1);
 if (PHP_VERSION_ID < 80100) {
     falla_inicial('Este sitio necesita PHP 8.1 o más nuevo. Esta instalación tiene PHP ' . PHP_VERSION . '.');
 }
-$faltan = array_values(array_filter(['pdo', 'curl', 'mbstring', 'dom', 'simplexml'], function ($e) {
+// curl no es obligatoria: sin ella los pedidos se hacen con las funciones de PHP, que para HTTPS necesitan openssl.
+$faltan = array_values(array_filter(['pdo', 'mbstring', 'dom', 'simplexml', extension_loaded('curl') ? 'pdo' : 'openssl'], function ($e) {
     return !extension_loaded($e);
 }));
 if ($faltan) {
-    falla_inicial('Faltan extensiones de PHP: ' . implode(', ', $faltan) . '. Activalas en php.ini (por ejemplo, quitando el ";" de "extension=curl") y reiniciá Apache.');
+    falla_inicial('Faltan extensiones de PHP: ' . implode(', ', array_unique($faltan)) . '. Activalas en php.ini (quitando el ";" de la línea "extension=...") y reiniciá Apache.');
 }
 
 function falla_inicial($mensaje)
@@ -28,6 +29,7 @@ function falla_inicial($mensaje)
     exit;
 }
 
+require_once __DIR__ . '/Http.php';
 require_once __DIR__ . '/Db.php';
 require_once __DIR__ . '/Texto.php';
 require_once __DIR__ . '/TablaHtmlParser.php';

@@ -117,34 +117,16 @@ final class LuciaSoap implements ConsultaLucia
      */
     public static function peticion(array $cfg, string $url, ?string $cuerpo, array $encabezados, ?string &$respuestaCruda = null): string
     {
-        $ch = curl_init($url);
-        $opciones = [
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_TIMEOUT        => $cfg['timeout'] ?? 30,
-            CURLOPT_HTTPHEADER     => $encabezados,
-        ];
-        if ($cuerpo !== null) {
-            $opciones[CURLOPT_POST] = true;
-            $opciones[CURLOPT_POSTFIELDS] = $cuerpo;
-        }
-        if (($cfg['autenticacion'] ?? 'basic') === 'basic' && ($cfg['usuario'] ?? '') !== '') {
-            $opciones[CURLOPT_HTTPAUTH] = CURLAUTH_BASIC;
-            $opciones[CURLOPT_USERPWD] = $cfg['usuario'] . ':' . ($cfg['clave'] ?? '');
-        }
-        if (!empty($cfg['ca_bundle'])) {
-            $opciones[CURLOPT_CAINFO] = $cfg['ca_bundle'];
-        }
-        curl_setopt_array($ch, $opciones);
+        $r = Http::pedir($url, $cuerpo, $encabezados, [
+            'timeout'   => $cfg['timeout'] ?? 30,
+            'usuario'   => ($cfg['autenticacion'] ?? 'basic') === 'basic' ? ($cfg['usuario'] ?? '') : '',
+            'clave'     => $cfg['clave'] ?? '',
+            'ca_bundle' => $cfg['ca_bundle'] ?? '',
+        ]);
+        $respuesta = $r['cuerpo'];
+        $codigo = $r['codigo'];
+        $respuestaCruda = $respuesta;
 
-        $respuesta = curl_exec($ch);
-        $codigo = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        $error = curl_error($ch);
-        curl_close($ch);
-        $respuestaCruda = (string) $respuesta;
-
-        if ($respuesta === false) {
-            throw new RuntimeException("No se pudo conectar con Lucía: $error");
-        }
         if ($codigo === 401 || $codigo === 403) {
             throw new LuciaSinConfigurar("Lucía rechazó el usuario o la contraseña (HTTP $codigo).");
         }

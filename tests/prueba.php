@@ -288,7 +288,28 @@ try {
     $cont->consultarPendientes($real, ['pausa_segundos' => 0], $ahoraLucia + 5 * 3600);
     $b = $db3->query("SELECT e.buque FROM contenedores c JOIN escalas e ON e.id = c.escala_id WHERE c.numero = 'CSQU3054383'")->fetchColumn();
     verificar($b === 'CAP SAN ARTEMISSIO', 'CSQU3054383 queda vinculado a CAP SAN ARTEMISSIO');
+
+    // Lo mismo sin la extensión curl (funciones de PHP)
+    Http::$sinCurl = true;
+    $r = (new LuciaSoap(['url' => $url, 'usuario' => 'usuario-prueba', 'clave' => 'clave-prueba']))->consultar('CSQU3054383');
+    verificar($r->encontrado && $r->buque === 'CAP SAN ARTEMISSIO', 'sin curl: consulta por la red con usuario y contraseña');
+    try {
+        (new LuciaSoap(['url' => $url, 'usuario' => 'usuario-prueba', 'clave' => 'mala']))->consultar('CSQU3054383');
+        verificar(false, 'sin curl: clave incorrecta → error claro');
+    } catch (LuciaSinConfigurar $e) {
+        verificar(str_contains($e->getMessage(), 'HTTP 401'), 'sin curl: clave incorrecta → error claro');
+    }
+    $get = Http::pedir("http://127.0.0.1:$puerto/index.php", null, [], ['usuario' => 'usuario-prueba', 'clave' => 'clave-prueba']);
+    verificar($get['codigo'] === 200 && str_contains($get['cuerpo'], 'Envelope'), 'sin curl: pedido GET con autenticación (como el del manifiesto)');
+    try {
+        Http::pedir('http://127.0.0.1:1/', null, [], ['timeout' => 2]);
+        verificar(false, 'sin curl: servidor inaccesible → error claro');
+    } catch (RuntimeException $e) {
+        verificar(str_contains($e->getMessage(), 'No se pudo conectar'), 'sin curl: servidor inaccesible → error claro');
+    }
+    Http::$sinCurl = false;
 } finally {
+    Http::$sinCurl = false;
     proc_terminate($proc);
 }
 

@@ -128,7 +128,10 @@ El script pide la contraseña y muestra la línea que hay que agregar en `config
 
 ## Instalación
 
-1. Requisitos: PHP 8.1 o superior con las extensiones `pdo_mysql`, `curl`, `dom` y `mbstring`, y MySQL 5.7+ o MariaDB 10.3+.
+1. Requisitos: PHP 8.1 o superior con las extensiones `pdo_mysql`, `openssl`, `dom`, `simplexml` y `mbstring`, y MySQL 5.7+ o MariaDB 10.3+.
+   La extensión `curl` es **opcional**: si no está, el sitio se conecta con las funciones de PHP.
+   En Windows, si PHP no tiene configurada la lista de certificados para HTTPS, el sitio usa la que trae XAMPP
+   (`php\extras\ssl\cacert.pem`); si no la encuentra, se indica la ruta en `ca_bundle` (`http` y `lucia` en `config.php`).
    En Windows sirve XAMPP con PHP 8.2 o AppServ 9.x. **Las versiones viejas de AppServ (2.x) no sirven:** traen PHP 5.
 2. Crear la base de datos y cargar el esquema:
    ```sql
@@ -155,7 +158,7 @@ El script pide la contraseña y muestra la línea que hay que agregar en `config
 
 Abrí **`http://localhost/.../verificar.php`** desde la misma PC donde está instalado el sitio. Revisa:
 - versión de PHP (hace falta 8.1 o más nuevo);
-- extensiones (`pdo_mysql`, `curl`, `mbstring`, `dom`, `simplexml`, `openssl`);
+- extensiones (`pdo_mysql`, `mbstring`, `dom`, `simplexml`, `openssl`; `curl` es opcional);
 - que exista `config.php`;
 - conexión a la base y tablas;
 - usuarios.

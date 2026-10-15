@@ -25,11 +25,17 @@ $versionOk = version_compare(PHP_VERSION, '8.1.0', '>=');
 fila($filas, $versionOk, 'Versión de PHP', 'Tenés PHP ' . PHP_VERSION . ($versionOk ? '' : '. Hace falta 8.1 o más nuevo (por ejemplo, XAMPP con PHP 8.2).'));
 
 // 2. Extensiones
-$extensiones = array('pdo', 'pdo_mysql', 'curl', 'mbstring', 'dom', 'simplexml', 'openssl');
+$extensiones = array('pdo', 'pdo_mysql', 'mbstring', 'dom', 'simplexml', 'openssl');
 foreach ($extensiones as $ext) {
     $ok = extension_loaded($ext);
     fila($filas, $ok, 'Extensión ' . $ext, $ok ? 'Activa' : 'No está activa: en php.ini quitá el ";" de la línea "extension=' . $ext . '" y reiniciá Apache.');
 }
+// curl es opcional: sin ella el sitio usa las funciones de PHP (necesitan openssl para HTTPS).
+fila($filas, extension_loaded('curl') || extension_loaded('openssl'), 'Extensión curl (opcional)', extension_loaded('curl')
+    ? 'Activa'
+    : (extension_loaded('openssl')
+        ? 'No está activa. No hace falta: el sitio se conecta con las funciones de PHP y openssl.'
+        : 'No está activa, y tampoco openssl: hace falta al menos openssl para conectarse por HTTPS.'));
 
 // 3. config.php
 $archivoConfig = getenv('PUERTO_CONFIG') ? getenv('PUERTO_CONFIG') : $raiz . DIRECTORY_SEPARATOR . 'config.php';

@@ -152,5 +152,8 @@ return [
     'http' => [
         'timeout'    => 30,
         'user_agent' => 'Mozilla/5.0 (compatible; PuertoUnificado/1.0)',
+        // Lista de certificados para HTTPS, solo si PHP no la encuentra (error "certificate verify failed").
+        // Ej. en XAMPP: 'C:\\xampp\\php\\extras\\ssl\\cacert.pem'
+        'ca_bundle'  => '',
     ],
 ];

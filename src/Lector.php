@@ -23,27 +23,15 @@ final class Lector
             return $contenido;
         }
 
-        $ch = curl_init($url);
-        curl_setopt_array($ch, [
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_FOLLOWLOCATION => true,
-            CURLOPT_MAXREDIRS      => 5,
-            CURLOPT_TIMEOUT        => $this->http['timeout'] ?? 30,
-            CURLOPT_USERAGENT      => $this->http['user_agent'] ?? 'PuertoUnificado/1.0',
-            CURLOPT_ENCODING       => '',
-            CURLOPT_HTTPHEADER     => array_map(fn($k, $v) => "$k: $v", array_keys($encabezados), $encabezados),
+        $r = Http::pedir($url, $cuerpo, array_map(fn($k, $v) => "$k: $v", array_keys($encabezados), $encabezados), [
+            'timeout'    => $this->http['timeout'] ?? 30,
+            'user_agent' => $this->http['user_agent'] ?? 'PuertoUnificado/1.0',
+            'ca_bundle'  => $this->http['ca_bundle'] ?? '',
         ]);
-        if ($cuerpo !== null) {
-            curl_setopt($ch, CURLOPT_POSTFIELDS, $cuerpo);
+        if ($r['codigo'] >= 400) {
+            throw new RuntimeException("Error al descargar $url: HTTP {$r['codigo']}");
         }
-        $cuerpo = curl_exec($ch);
-        $codigo = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        $error = curl_error($ch);
-        curl_close($ch);
-
-        if ($cuerpo === false || $codigo >= 400) {
-            throw new RuntimeException("Error al descargar $url: " . ($error ?: "HTTP $codigo"));
-        }
+        $cuerpo = $r['cuerpo'];
         if (!mb_check_encoding($cuerpo, 'UTF-8')) {
             $cuerpo = mb_convert_encoding($cuerpo, 'UTF-8', 'ISO-8859-1');
         }
