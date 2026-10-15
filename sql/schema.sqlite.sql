@@ -67,3 +67,13 @@ CREATE TABLE IF NOT EXISTS contenedores (
     vinculado       DATETIME     NULL,
     UNIQUE (numero, carpeta)
 );
+
+-- Manifiestos ya consultados en Lucía (varios contenedores comparten manifiesto)
+CREATE TABLE IF NOT EXISTS manifiestos (
+    clave       VARCHAR(80)  NOT NULL PRIMARY KEY,
+    buque       VARCHAR(150) NULL,
+    viaje       VARCHAR(60)  NULL,
+    fecha       VARCHAR(30)  NULL,
+    consultado  DATETIME     NOT NULL,
+    detalle     TEXT         NULL
+);

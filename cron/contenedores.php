@@ -20,7 +20,9 @@ $ahora = date('Y-m-d H:i:s');
 
 try {
     $lucia = Lucia::crear($luciaCfg);
-    $r = (new Contenedores($db))->consultarPendientes($lucia, $luciaCfg, null, fn($linea) => print("  $linea\n"));
+    $servicio = new Contenedores($db);
+    $servicio->usarManifiestos(Lucia::manifiestos($luciaCfg), (int) ($luciaCfg['reconsultar_horas'] ?? 2));
+    $r = $servicio->consultarPendientes($lucia, $luciaCfg, null, fn($linea) => print("  $linea\n"));
 } catch (Throwable $t) {
     fwrite(STDERR, "[$ahora] LUCIA: ERROR {$t->getMessage()}\n");
     exit(1);

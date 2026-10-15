@@ -5,11 +5,14 @@
 #   2. respuesta_datoscont.xml     metodo DATOSCONT con Quedatos = TOD
 #   3. respuesta_fechas.xml        metodo DATOSCONTFECHAS con un rango de fechas amplio
 #   4. respuesta_fechas_sin_guiones.xml   lo mismo, con el contenedor sin guiones (para comparar)
+#   5. respuesta_manifiesto.xml    manifiesto (afMicXmlunif) con la clave que trae la respuesta 3,
+#                                  para ver si informa el nombre del buque
 # La clave se guarda solo durante la prueba en un archivo temporal que se borra al final.
 
 $ErrorActionPreference = 'Stop'
 Set-Location -LiteralPath $PSScriptRoot
 $url = 'https://servicios.aduanas.gub.uy/luciaws/awsdatcont.aspx'
+$urlManifiesto = 'https://servicios.aduanas.gub.uy/luciaws/afMicXmlunif.aspx'
 
 if (-not (Get-Command curl.exe -ErrorAction SilentlyContinue)) {
     Write-Host 'No se encontro curl.exe. Hace falta Windows 10 o mas nuevo.'
@@ -89,6 +92,32 @@ try {
 
     $sinGuiones = $fechas.Replace("<Contenedor>$contGuiones</Contenedor>", "<Contenedor>$cont</Contenedor>")
     Consultar "4) DATOSCONTFECHAS del $desde al $hasta, contenedor $cont (sin guiones)" 'LUCIAxaction/AWSDATCONT.DATOSCONTFECHAS' $sinGuiones 'pedido_fechas_sin_guiones.xml' 'respuesta_fechas_sin_guiones.xml'
+
+    # 5) Manifiesto: la clave sale de LINMANIF (TPOTRANSP, TIPOMIC, NROMIC, DEPOSITO, FECHAARRIB)
+    $clave = $null
+    try {
+        [xml]$doc = Get-Content -LiteralPath (Join-Path $PSScriptRoot 'respuesta_fechas.xml') -Raw -Encoding UTF8
+        $linea = $doc.GetElementsByTagName('Linea') | Select-Object -First 1
+        if ($linea) {
+            $campos = 'TPOTRANSP', 'TIPOMIC', 'NROMIC', 'DEPOSITO', 'FECHAARRIB' | ForEach-Object { $linea.GetElementsByTagName($_)[0].InnerText.Trim() }
+            $clave = $campos -join ','
+        }
+    } catch {
+        Write-Host "No se pudo leer respuesta_fechas.xml: $_"
+    }
+    if (-not $clave) {
+        Write-Host ''
+        Write-Host 'La respuesta no trae linea de manifiesto (LINMANIF).'
+        $clave = Read-Host 'Clave del manifiesto: TipoTransporte,TipoMic,NroMic,Deposito,FechaArribo [Enter = omitir]'
+    }
+    if ($clave) {
+        Write-Host ''
+        Write-Host "== 5) Manifiesto $clave"
+        $respManif = Join-Path $PSScriptRoot 'respuesta_manifiesto.xml'
+        & curl.exe -sS -K $cfg -o $respManif -w '   HTTP %{http_code}' ($urlManifiesto + '?' + $clave)
+        Write-Host ''
+        if (Test-Path -LiteralPath $respManif) { Get-Content -LiteralPath $respManif | Write-Host }
+    }
 }
 finally {
     Remove-Item -LiteralPath $cfg -ErrorAction SilentlyContinue

@@ -48,7 +48,13 @@ return [
         'clave'    => '',
         // Si el certificado de Lucía es de una autoridad interna, ruta al archivo .pem de esa autoridad.
         'ca_bundle' => '',
-        // Lucía no informa el buque: se deduce por la terminal y la fecha de descarga.
+        // Lucía no informa el buque en los datos del contenedor: se consulta el manifiesto
+        // (afMicXmlunif, con la clave que viene en LINMANIF) para obtener el nombre del buque.
+        'consultar_manifiestos' => true,
+        'url_manifiesto' => 'https://servicios.aduanas.gub.uy/luciaws/afMicXmlunif.aspx',
+        // Nombres adicionales de los elementos de la respuesta del manifiesto, si el diagnóstico muestra otros.
+        'campos_manifiesto' => ['buque' => [], 'viaje' => [], 'fecha' => []],
+        // Si tampoco se obtiene así, se deduce por la terminal y la fecha de descarga.
         // Terminal según el operador de la convalidada (texto contenido en el nombre)...
         'operadores' => ['CUENCA DEL PLATA' => 'TCP', 'MONTECON' => 'MONTECON'],
         // ...o según el depósito del manifiesto. 1650 = TCP (visto en una respuesta real); falta el de Montecon.

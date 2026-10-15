@@ -107,24 +107,34 @@ final class LuciaSoap implements ConsultaLucia
         // La dirección del servicio es la del WSDL sin "?wsdl".
         $url = preg_replace('/\?wsdl$/i', '', $this->cfg['url']);
         $this->ultimoPedido = $sobre;
+        return self::peticion($this->cfg, $url, $sobre, [
+            'Content-Type: text/xml; charset=utf-8',
+            'SOAPAction: "' . $accion . '"',
+        ], $this->ultimaRespuesta);
+    }
 
+    /**
+     * Pedido HTTP a Lucía (POST si hay cuerpo, GET si no) con la autenticación de config.php.
+     * Lo usan este cliente y el de manifiestos.
+     */
+    public static function peticion(array $cfg, string $url, ?string $cuerpo, array $encabezados, ?string &$respuestaCruda = null): string
+    {
         $ch = curl_init($url);
         $opciones = [
-            CURLOPT_POST           => true,
-            CURLOPT_POSTFIELDS     => $sobre,
             CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_TIMEOUT        => $this->cfg['timeout'] ?? 30,
-            CURLOPT_HTTPHEADER     => [
-                'Content-Type: text/xml; charset=utf-8',
-                'SOAPAction: "' . $accion . '"',
-            ],
+            CURLOPT_TIMEOUT        => $cfg['timeout'] ?? 30,
+            CURLOPT_HTTPHEADER     => $encabezados,
         ];
-        if (($this->cfg['autenticacion'] ?? 'basic') === 'basic' && ($this->cfg['usuario'] ?? '') !== '') {
-            $opciones[CURLOPT_HTTPAUTH] = CURLAUTH_BASIC;
-            $opciones[CURLOPT_USERPWD] = $this->cfg['usuario'] . ':' . ($this->cfg['clave'] ?? '');
+        if ($cuerpo !== null) {
+            $opciones[CURLOPT_POST] = true;
+            $opciones[CURLOPT_POSTFIELDS] = $cuerpo;
         }
-        if (!empty($this->cfg['ca_bundle'])) {
-            $opciones[CURLOPT_CAINFO] = $this->cfg['ca_bundle'];
+        if (($cfg['autenticacion'] ?? 'basic') === 'basic' && ($cfg['usuario'] ?? '') !== '') {
+            $opciones[CURLOPT_HTTPAUTH] = CURLAUTH_BASIC;
+            $opciones[CURLOPT_USERPWD] = $cfg['usuario'] . ':' . ($cfg['clave'] ?? '');
+        }
+        if (!empty($cfg['ca_bundle'])) {
+            $opciones[CURLOPT_CAINFO] = $cfg['ca_bundle'];
         }
         curl_setopt_array($ch, $opciones);
 
@@ -132,7 +142,7 @@ final class LuciaSoap implements ConsultaLucia
         $codigo = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         $error = curl_error($ch);
         curl_close($ch);
-        $this->ultimaRespuesta = (string) $respuesta;
+        $respuestaCruda = (string) $respuesta;
 
         if ($respuesta === false) {
             throw new RuntimeException("No se pudo conectar con Lucía: $error");
@@ -227,6 +237,20 @@ final class LuciaSoap implements ConsultaLucia
         }
         $manifiesto = $conv['MANIFIESTO'] ?? $linea['NROMIC'] ?? null;
 
+        // Claves de manifiesto para consultar el buque en afMicXmlunif:
+        // TipoTransporte, TipoMic, NroMic, Deposito, FechaArribo (AAAAMMDD, parte de la clave).
+        $claves = [];
+        foreach ($lineas as $l) {
+            $claves[] = [$l['TPOTRANSP'] ?? '', $l['TIPOMIC'] ?? '0', $l['NROMIC'] ?? '', $l['DEPOSITO'] ?? '', $l['FECHAARRIB'] ?? ''];
+        }
+        foreach ($convalidadas as $cv) {
+            $claves[] = [$cv['TPOTRANSP'] ?? '', '0', $cv['MANIFIESTO'] ?? '', $cv['DEPOSITO'] ?? '', $cv['FCHARRIBO'] ?? ''];
+        }
+        $claves = array_values(array_unique(
+            array_filter(array_map(fn($c) => array_map('trim', $c), $claves), fn($c) => $c[2] !== '' && $c[4] !== ''),
+            SORT_REGULAR
+        ));
+
         $resumen = [];
         if ($conv) {
             $resumen[] = 'Descargado ' . (Texto::mostrarFecha(Texto::fecha($conv['DESCARGA'] ?? null)) ?: '(sin fecha)')
@@ -265,7 +289,7 @@ final class LuciaSoap implements ConsultaLucia
             null,
             null,
             $fecha,
-            ['secciones_con_datos' => $conDatos, 'manifiesto' => $manifiesto, 'mensaje' => $mensaje, 'resumen' => $resumen, 'respuesta' => $datos],
+            ['secciones_con_datos' => $conDatos, 'manifiesto' => $manifiesto, 'claves_manifiesto' => $claves, 'mensaje' => $mensaje, 'resumen' => $resumen, 'respuesta' => $datos],
             $terminal,
             $resumen,
         );

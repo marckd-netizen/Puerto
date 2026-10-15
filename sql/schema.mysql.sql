@@ -75,3 +75,13 @@ CREATE TABLE IF NOT EXISTS contenedores (
     CONSTRAINT fk_contenedores_cliente FOREIGN KEY (cliente_id) REFERENCES clientes (id) ON DELETE SET NULL,
     CONSTRAINT fk_contenedores_escala FOREIGN KEY (escala_id) REFERENCES escalas (id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Manifiestos ya consultados en Lucía (varios contenedores comparten manifiesto)
+CREATE TABLE IF NOT EXISTS manifiestos (
+    clave       VARCHAR(80)  NOT NULL PRIMARY KEY,
+    buque       VARCHAR(150) NULL,
+    viaje       VARCHAR(60)  NULL,
+    fecha       VARCHAR(30)  NULL,
+    consultado  DATETIME     NOT NULL,
+    detalle     MEDIUMTEXT   NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

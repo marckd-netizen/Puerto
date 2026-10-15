@@ -4,8 +4,40 @@ declare(strict_types=1);
 /** Clientes, contenedores y su vinculación con las escalas del tablero. */
 final class Contenedores
 {
+    private ?BuscadorManifiesto $manifiestos = null;
+    private int $reconsultarHoras = 2;
+
     public function __construct(private PDO $db)
     {
+    }
+
+    /** Activa la consulta del buque por número de manifiesto (Lucía no lo informa en los datos del contenedor). */
+    public function usarManifiestos(?BuscadorManifiesto $manifiestos, int $reconsultarHoras = 2): void
+    {
+        $this->manifiestos = $manifiestos;
+        $this->reconsultarHoras = $reconsultarHoras;
+    }
+
+    /**
+     * Buque de un manifiesto, guardado en la tabla manifiestos para no repetir la consulta:
+     * si ya se conoce el buque no se vuelve a preguntar; si no, se reintenta pasadas unas horas.
+     * @return array{buque: ?string, viaje: ?string, fecha: ?string}
+     */
+    public function buqueDeManifiesto(array $clave, int $ahora): array
+    {
+        $id = implode(',', $clave);
+        $st = $this->db->prepare('SELECT buque, viaje, fecha, consultado FROM manifiestos WHERE clave = ?');
+        $st->execute([$id]);
+        $guardado = $st->fetch();
+        if ($guardado && ($guardado['buque'] !== null || strtotime($guardado['consultado']) > $ahora - $this->reconsultarHoras * 3600)) {
+            return $guardado;
+        }
+
+        $m = $this->manifiestos->consultar($clave);
+        $this->db->prepare('DELETE FROM manifiestos WHERE clave = ?')->execute([$id]);
+        $this->db->prepare('INSERT INTO manifiestos (clave, buque, viaje, fecha, consultado, detalle) VALUES (?, ?, ?, ?, ?, ?)')
+            ->execute([$id, $m->buque, $m->viaje, $m->fecha, date('Y-m-d H:i:s', $ahora), json_encode($m->detalle, JSON_UNESCAPED_UNICODE)]);
+        return ['buque' => $m->buque, 'viaje' => $m->viaje, 'fecha' => $m->fecha];
     }
 
     // ---------------------------------------------------------------- clientes
@@ -232,25 +264,50 @@ final class Contenedores
             return false;
         }
 
-        $escalaId = $this->buscarEscala($r->buque, $r->viaje, $r->fecha, $ahora);
+        // 1) Buque informado por Lucía; 2) si no, el del manifiesto; 3) si no, terminal + fecha de descarga.
+        $buque = $r->buque;
+        $viaje = $r->viaje;
+        $fecha = $r->fecha;
+        $manifiestoUsado = null;
+        $avisoManifiesto = null;
+        if ($buque === null && $this->manifiestos !== null) {
+            foreach ($r->detalle['claves_manifiesto'] ?? [] as $clave) {
+                try {
+                    $m = $this->buqueDeManifiesto($clave, $ahora);
+                } catch (Throwable $t) {
+                    if ($t instanceof LuciaSinConfigurar) {
+                        throw $t;
+                    }
+                    $avisoManifiesto = "No se pudo consultar el manifiesto {$clave[2]}: " . $t->getMessage();
+                    continue;
+                }
+                if ($m['buque'] !== null) {
+                    [$buque, $viaje, $fecha, $manifiestoUsado] = [$m['buque'], $m['viaje'], $m['fecha'] ?: $r->fecha, $clave[2]];
+                    break;
+                }
+            }
+        }
+
+        $escalaId = $this->buscarEscala($buque, $viaje, $fecha, $ahora);
         $porTerminal = false;
-        if ($escalaId === null && $r->buque === null && $r->terminal !== null && $r->fecha !== null) {
+        if ($escalaId === null && $r->terminal !== null && $r->fecha !== null) {
             $escalaId = $this->buscarEscalaPorTerminal($r->terminal, $r->fecha);
             $porTerminal = $escalaId !== null;
         }
         $mismaEscala = $escalaId !== null && $c['escala_id'] !== null && (int) $c['escala_id'] === $escalaId;
+        $segunManifiesto = $manifiestoUsado !== null ? " (según manifiesto $manifiestoUsado)" : '';
         $this->db->prepare("UPDATE contenedores SET lucia_estado = 'encontrado', lucia_consulta = ?, lucia_buque = ?, lucia_viaje = ?,
                 lucia_fecha = ?, lucia_mensaje = ?, lucia_detalle = ?, escala_id = ?, vinculado = ? WHERE id = ?")
             ->execute([
-                $cuando, $r->buque, $r->viaje, $r->fecha,
-                match (true) {
+                $cuando, $buque, $viaje, $fecha,
+                mb_substr(trim(match (true) {
+                    $porTerminal && $buque !== null => "El buque $buque$segunManifiesto no figura en el tablero; se dedujo por terminal ({$r->terminal}) y fecha de descarga (" . Texto::mostrarFecha($r->fecha) . ')',
                     $porTerminal => "Buque deducido por terminal ({$r->terminal}) y fecha de descarga o arribo (" . Texto::mostrarFecha($r->fecha) . ')',
-                    $escalaId !== null => null,
-                    $r->buque === null && $r->terminal !== null && $r->fecha !== null
-                        => "Ningún buque del tablero operaba en {$r->terminal} el " . Texto::mostrarFecha($r->fecha),
-                    $r->buque === null => 'Lucía tiene datos del contenedor (' . implode(', ', $r->detalle['secciones_con_datos'] ?? []) . '), pero todavía no hay terminal o fecha para ubicar el buque',
-                    default => "El buque {$r->buque} no figura en el tablero",
-                },
+                    $escalaId !== null => $segunManifiesto !== '' ? "Buque$segunManifiesto" : '',
+                    $buque !== null => "El buque $buque$segunManifiesto no figura en el tablero",
+                    $r->terminal !== null && $r->fecha !== null => "Ningún buque del tablero operaba en {$r->terminal} el " . Texto::mostrarFecha($r->fecha),
+                    default => 'Lucía tiene datos del contenedor (' . implode(', ', $r->detalle['secciones_con_datos'] ?? []) . '), pero todavía no se pudo ubicar el buque',
+                } . ($avisoManifiesto ? " · $avisoManifiesto" : '')), 0, 255) ?: null,
                 json_encode($r->detalle, JSON_UNESCAPED_UNICODE),
                 $escalaId,
                 $escalaId === null ? null : ($mismaEscala ? $c['vinculado'] : $cuando),
@@ -272,7 +329,7 @@ final class Contenedores
             return null;
         }
         $candidatas = array_values(array_filter(
-            $this->db->query('SELECT id, buque, viaje, eta, etd FROM escalas WHERE activa = 1')->fetchAll(),
+            $this->db->query('SELECT id, buque, viaje, eta, etd, activa FROM escalas')->fetchAll(),
             fn($e) => self::clave($e['buque']) === $nombre
         ));
         if (!$candidatas) {
@@ -290,8 +347,8 @@ final class Contenedores
 
         $referencia = ($fecha && ($t = strtotime($fecha)) !== false) ? $t : $ahora;
         if (!$fecha) {
-            // Sin fecha de Lucía se descartan las escalas que ya zarparon, si queda alguna.
-            $vigentes = array_filter($candidatas, fn($e) => !$e['etd'] || strtotime($e['etd']) >= $ahora);
+            // Sin fecha se prefieren las escalas vigentes: activas en el line-up y sin zarpar.
+            $vigentes = array_filter($candidatas, fn($e) => $e['activa'] && (!$e['etd'] || strtotime($e['etd']) >= $ahora));
             $candidatas = $vigentes ?: $candidatas;
         }
         usort($candidatas, fn($a, $b) => self::distancia($a['eta'], $referencia) <=> self::distancia($b['eta'], $referencia));

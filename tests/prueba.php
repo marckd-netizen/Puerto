@@ -346,5 +346,45 @@ verificar($r['vinculados'] === 1 && $fila['buque'] === 'BUQUE DE LA DESCARGA', '
 verificar(str_contains((string) $fila['lucia_mensaje'], 'deducido por terminal (TCP)'), 'se aclara que el buque es deducido');
 verificar(count(json_decode($fila['lucia_detalle'], true)['resumen']) >= 5, 'se guarda el resumen para mostrar');
 
+echo "Buque por número de manifiesto (afMicXmlunif)\n";
+verificar($hamu->detalle['claves_manifiesto'] === [['1', '0', '291201', '1650', '20260101']], 'la consulta del contenedor obtiene la clave del manifiesto (LINMANIF y CONVALIDADA coinciden)');
+$lm = new LuciaManifiesto([]);
+verificar($lm->url(['1', '0', '291201 ', '1650', '20260101']) === 'https://servicios.aduanas.gub.uy/luciaws/afMicXmlunif.aspx?1,0,291201,1650,20260101', 'arma la URL del manifiesto como en la documentación');
+$rm = $lm->interpretar(file_get_contents(__DIR__ . '/fixtures/lucia_manifiesto_supuesto.xml'));
+verificar($rm->buque === 'BUQUE DE LA DESCARGA' && $rm->viaje === '641W' && $rm->fecha === '2026-10-03 06:00', 'lee buque, viaje y fecha del manifiesto (respuesta supuesta)');
+verificar((new LuciaManifiesto(['campos_manifiesto' => ['buque' => ['Embarcacion']]]))->interpretar('<R><Embarcacion>CAP X</Embarcacion></R>')->buque === 'CAP X', 'acepta nombres de elementos configurados');
+verificar((new LuciaManifiesto([]))->interpretar('<R><Buque>12345</Buque></R>')->buque === null, 'un código numérico no se toma como nombre de buque');
+
+// De punta a punta: contenedor → manifiesto → buque por nombre (con caché del manifiesto)
+$manifFalso = new class implements BuscadorManifiesto {
+    public int $llamadas = 0;
+    public function consultar(array $clave): ResultadoManifiesto
+    {
+        $this->llamadas++;
+        return (new LuciaManifiesto([]))->interpretar(file_get_contents(__DIR__ . '/fixtures/lucia_manifiesto_supuesto.xml'));
+    }
+};
+// Escala por nombre en Montecon (otra terminal y fecha que la deducción por TCP) para comprobar que manda el manifiesto
+$ins->execute(['MONTECON', 'e', 'BUQUE DE LA DESCARGA', '641W', '2026-10-03 06:00', '2026-10-03 07:00', '2026-10-04 07:00', 1]);
+$idPorNombre = (int) $db4->lastInsertId();
+$cont4->usarManifiestos($manifFalso);
+$db4->exec('UPDATE contenedores SET lucia_consulta = NULL');
+$cont4->guardarContenedor('CSQU3054383', '2026-501');
+$cont4->consultarPendientes($luciaFija, ['pausa_segundos' => 0], strtotime('2026-10-14 12:00'));
+$filas4 = $db4->query('SELECT numero, escala_id, lucia_buque, lucia_mensaje FROM contenedores ORDER BY numero')->fetchAll(PDO::FETCH_UNIQUE);
+verificar((int) $filas4['HAMU4640084']['escala_id'] === $idPorNombre && $filas4['HAMU4640084']['lucia_buque'] === 'BUQUE DE LA DESCARGA', 'el contenedor queda vinculado al buque del manifiesto, por nombre y viaje');
+verificar(str_contains((string) $filas4['HAMU4640084']['lucia_mensaje'], 'según manifiesto 291201'), 'se aclara que el buque sale del manifiesto');
+verificar($manifFalso->llamadas === 1, 'dos contenedores del mismo manifiesto → una sola consulta (queda guardado)');
+
+$manifFalla = new class implements BuscadorManifiesto {
+    public function consultar(array $clave): ResultadoManifiesto { throw new RuntimeException('servicio caído'); }
+};
+$db4->exec('DELETE FROM manifiestos');
+$db4->exec('UPDATE contenedores SET lucia_consulta = NULL');
+$cont4->usarManifiestos($manifFalla);
+$r = $cont4->consultarPendientes($luciaFija, ['pausa_segundos' => 0], strtotime('2026-10-14 12:00'));
+$f = $db4->query("SELECT e.buque, c.lucia_mensaje FROM contenedores c JOIN escalas e ON e.id = c.escala_id WHERE c.numero = 'HAMU4640084'")->fetch();
+verificar($r['errores'] === [] && $f['buque'] === 'BUQUE DE LA DESCARGA' && $f['lucia_mensaje'] !== null && str_contains($f['lucia_mensaje'], 'servicio caído'), 'si falla el manifiesto, se usa terminal + fecha y se avisa');
+
 echo $fallas ? "\n$fallas prueba(s) fallaron\n" : "\nTodas las pruebas pasaron\n";
 exit($fallas ? 1 : 0);

@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- RESPUESTA SUPUESTA de afMicXmlunif: todavía no se vio una real. Reemplazar cuando se tenga. -->
+<SDTMicXml>
+  <Manifiesto>
+    <TipoTransporte>1</TipoTransporte>
+    <NroMic>291201</NroMic>
+    <Deposito>1650</Deposito>
+    <FechaArribo>20260101</FechaArribo>
+    <MedioTransporte>9876543</MedioTransporte>
+    <NombreBuque>BUQUE DE LA DESCARGA</NombreBuque>
+    <NroViaje>641W</NroViaje>
+    <FechaArriboReal>2026-10-03T06:00:00</FechaArriboReal>
+  </Manifiesto>
+  <Conocimientos>
+    <Conocimiento><NroConocimiento>65</NroConocimiento></Conocimiento>
+  </Conocimientos>
+</SDTMicXml>

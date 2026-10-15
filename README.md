@@ -67,12 +67,21 @@ Confirmado con el servicio real:
 - **Lucía no informa el nombre del buque.** El `VIAJE` de DUAS y MOVIMVIAJE es el del tránsito
   terrestre (camión), no el del barco.
 
-Por eso el buque se **deduce**: la terminal sale del operador de la convalidada
-("TERMINAL CUENCA DEL PLATA" → TCP) o del depósito del manifiesto (1650 → TCP; falta el código de Montecon),
-y la fecha, de la descarga de la convalidada (o del arribo del manifiesto, si es una fecha plausible).
-Se elige el buque que operaba en esa terminal en ese momento (entre ETB y ETD), y en la página se aclara
-"Buque deducido por terminal y fecha". Además, cada contenedor muestra un resumen: descarga, origen y destino,
-manifiesto y liberación, DUA, mensajes simplificados, último movimiento de stock, tránsito e incautaciones.
+Por eso el buque se busca así, en este orden:
+1. **Por el manifiesto.** La sección `LINMANIF` trae la clave del manifiesto (TipoTransporte, TipoMic,
+   NroMic, Deposito, FechaArribo). Con esa clave se consulta el servicio de manifiestos
+   (`afMicXmlunif.aspx?1,0,291201,1650,20260101`, documentado en la
+   [wiki de la Aduana](https://apliwiki.aduanas.gub.uy/WikiNovedades/wiki.aspx?8217,WEBSERVICES,)) y se toma
+   el nombre del buque. Con ese nombre se vincula la escala del tablero. Cada manifiesto se guarda
+   en la tabla `manifiestos`, así varios contenedores del mismo manifiesto generan una sola consulta.
+   *Falta ver una respuesta real del manifiesto* para confirmar en qué elemento viene el buque.
+2. **Por terminal y fecha de descarga.** Si lo anterior no da resultado: la terminal sale del operador de la convalidada
+   ("TERMINAL CUENCA DEL PLATA" → TCP) o del depósito (1650 → TCP; falta el de Montecon), y la fecha,
+   de la descarga. Se elige el buque que operaba en esa terminal en ese momento (entre ETB y ETD).
+
+En la página se aclara de dónde salió el buque ("según manifiesto 291201" o "deducido por terminal y fecha").
+Además, cada contenedor muestra un resumen: descarga, origen y destino, manifiesto y liberación, DUA,
+mensajes simplificados, último movimiento de stock, tránsito e incautaciones.
 
 Dirección: `https://servicios.aduanas.gub.uy/luciaws/awsdatcont.aspx?wsdl`. Si la Aduana
 habilita el acceso solo desde ciertas direcciones IP, la del servidor del sitio tiene que estar habilitada.
@@ -80,7 +89,8 @@ habilita el acceso solo desde ciertas direcciones IP, la del servidor del sitio 
 **Prueba rápida sin PHP (Windows 10 u 11):** copiar `herramientas/lucia_prueba.bat` y
 `herramientas/lucia_prueba.ps1` en la misma carpeta y hacer doble clic en el `.bat`. Pide el
 contenedor, el rango de días, el usuario y la clave (una sola vez, sin mostrarla) y guarda en esa
-carpeta `wsdl.xml` y las respuestas. La consulta por fechas se hace con y sin guiones, para comparar.
+carpeta `wsdl.xml` y las respuestas. La consulta por fechas se hace con y sin guiones, para comparar,
+y al final consulta el manifiesto del contenedor (`respuesta_manifiesto.xml`).
 
 **Primera prueba con el sitio instalado:**
 1. En `config.php` → `lucia`: `'modo' => 'soap'`, `usuario` y `clave`. **Solo en el servidor**, nunca en el repositorio.
@@ -88,6 +98,7 @@ carpeta `wsdl.xml` y las respuestas. La consulta por fechas se hace con y sin gu
    ```bash
    php cron/lucia_diagnostico.php MSKU1234567        # DATOSCONTFECHAS
    php cron/lucia_diagnostico.php MSKU1234567 TOD    # DATOSCONT con Quedatos = TOD
+   php cron/lucia_diagnostico.php --manifiesto 1,0,291201,1650,20260101   # solo un manifiesto
    ```
    Muestra el pedido, la respuesta completa y qué buque, viaje y fecha entendió el sistema.
 3. Si no encuentra el buque, agregá en `config.php` → `lucia` → `campos` los nombres de los

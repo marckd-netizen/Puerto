@@ -82,4 +82,10 @@ final class Lucia
             default => throw new RuntimeException('Modo de Lucía desconocido: ' . $cfg['modo']),
         };
     }
+
+    /** Consulta de manifiestos: solo con el webservice real. */
+    public static function manifiestos(array $cfg): ?BuscadorManifiesto
+    {
+        return ($cfg['modo'] ?? '') === 'soap' && ($cfg['consultar_manifiestos'] ?? true) ? new LuciaManifiesto($cfg) : null;
+    }
 }
