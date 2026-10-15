@@ -151,6 +151,28 @@ El script pide la contraseña y muestra la línea que hay que agregar en `config
    ```
    Para probar a mano: `php cron/actualizar.php` (o `php cron/actualizar.php TCP` para una sola terminal).
 
+## Si algo falla
+
+Abrí **`http://localhost/.../verificar.php`** desde la misma PC donde está instalado el sitio. Revisa:
+- versión de PHP (hace falta 8.1 o más nuevo);
+- extensiones (`pdo_mysql`, `curl`, `mbstring`, `dom`, `simplexml`, `openssl`);
+- que exista `config.php`;
+- conexión a la base y tablas;
+- usuarios.
+
+Lo que falte aparece en rojo, con la indicación de cómo corregirlo.
+
+Además, si ocurre un error en cualquier página, en lugar de un "HTTP ERROR 500" en blanco se muestra
+qué pasó. El detalle técnico se ve solo desde la misma PC (o con `'mostrar_errores' => true` en `config.php`)
+y siempre queda en el log de errores de PHP (en XAMPP: `xampp\apache\logs\error.log`).
+
+Errores frecuentes:
+- **PHP viejo:** instalar XAMPP con PHP 8.2 o más nuevo.
+- **Extensión desactivada:** en `php.ini` quitar el `;` de la línea `extension=...` y reiniciar Apache.
+- **Error de base de datos:** revisar `db` en `config.php`, que MySQL esté iniciado en el panel de XAMPP y
+  que se haya importado `sql/schema.mysql.sql` (phpMyAdmin → base `puerto` → Importar).
+- **`config.php` en otro lugar:** va en la carpeta principal del sitio (junto a `config.example.php`), no en `public`.
+
 ## De dónde salen los datos
 
 ### TCP
