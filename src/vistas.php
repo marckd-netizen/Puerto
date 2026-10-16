@@ -43,6 +43,36 @@ function etiquetaTerminal(string $codigo, array $cfg): string
     return '<span class="terminal" style="background:' . e($color) . '">' . e($codigo) . '</span>';
 }
 
+/**
+ * Situación de stock de un contenedor según Lucía (MOVIMSTOCK). null si todavía no hay datos de Lucía.
+ * @return ?array{estado: string, texto: string}
+ */
+function stockContenedor(array $c, array $cfg): ?array
+{
+    if (($c['lucia_estado'] ?? '') !== 'encontrado') {
+        return null;
+    }
+    $s = LuciaSoap::stockDeDetalle(json_decode((string) ($c['lucia_detalle'] ?? ''), true) ?: []);
+    if ($s === null) {
+        return null;
+    }
+    $dep = $s['deposito'] ?? null;
+    $nombre = $dep !== null ? ($cfg['lucia']['depositos'][$dep] ?? null) : null;
+    $donde = $dep !== null ? ' en depósito ' . $dep . ($nombre ? " ($nombre)" : '') : '';
+    $fecha = $s['fecha'] ? date('d/m', strtotime($s['fecha'])) : '';
+    return ['estado' => $s['estado'], 'texto' => match ($s['estado']) {
+        'en_stock' => "En stock$donde desde $fecha",
+        'salio'    => "Salió del stock $fecha$donde",
+        default    => 'Sin stock todavía',
+    }];
+}
+
+function etiquetaStock(array $c, array $cfg): string
+{
+    $s = stockContenedor($c, $cfg);
+    return $s === null ? '' : '<span class="stock stock-' . e($s['estado']) . '">' . e($s['texto']) . '</span>';
+}
+
 function esCampoFecha(string $campo): bool
 {
     return in_array($campo, ['eta', 'etb', 'etd', 'cierre'], true);

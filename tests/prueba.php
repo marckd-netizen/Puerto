@@ -335,7 +335,19 @@ $res = implode("\n", $hamu->resumen);
 verificar(str_contains($res, 'Descargado 03/10 20:28 en TERMINAL CUENCA DEL PLATA S A · US HOU → UY MVD · 40GP'), 'resumen: descarga, origen y tamaño');
 verificar(str_contains($res, 'DUA 001-2026-203685 · estado DES · numerado 13/10'), 'resumen: DUA');
 verificar(str_contains($res, 'Manifiesto 291201 línea 1 · estado CER · liberado 02/10 15:09'), 'resumen: línea de manifiesto liberada');
-verificar(str_contains($res, 'Último movimiento de stock: salida depósito 1694 · 14/10'), 'resumen: último movimiento de stock');
+verificar($hamu->detalle['stock'] === ['estado' => 'salio', 'deposito' => '1694', 'fecha' => '2026-10-14'], 'stock: entró a 1644 y a 1694, salió de los dos → salió el 14/10 de 1694');
+$mov = fn(string $dep, string $tipo, string $fecha) => ['DEPOSITO' => $dep, 'TIPO' => $tipo, 'FECHA' => $fecha];
+verificar(LuciaSoap::situacionStock([$mov('1644', 'ENT', '2026-10-03'), $mov('1644', 'SAL', '2026-10-05'), $mov('1694', 'ENT', '2026-10-06')])
+    === ['estado' => 'en_stock', 'deposito' => '1694', 'fecha' => '2026-10-06'], 'stock: entrada sin salida posterior → en stock en ese depósito');
+verificar(LuciaSoap::situacionStock([])['estado'] === 'sin_stock', 'stock: sin movimientos → sin stock todavía');
+$detalleViejo = $hamu->detalle;
+unset($detalleViejo['stock']);
+verificar(LuciaSoap::stockDeDetalle($detalleViejo) === $hamu->detalle['stock'], 'stock: contenedores consultados antes se calculan con la respuesta guardada');
+verificar(LuciaSoap::stockDeDetalle(['buque' => 'X']) === null, 'stock: sin respuesta de Lucía no se informa');
+require_once dirname(__DIR__) . '/src/vistas.php';
+$cHamu = ['lucia_estado' => 'encontrado', 'lucia_detalle' => json_encode($hamu->detalle)];
+verificar(stockContenedor($cHamu, $base)['texto'] === 'Salió del stock 14/10 en depósito 1694', 'stock: texto para mostrar');
+verificar(stockContenedor(['lucia_estado' => 'pendiente', 'lucia_detalle' => null], $base) === null, 'stock: contenedor sin consultar no muestra nada');
 verificar(str_contains($res, 'Tránsito: viaje 8319011 · matrícula AAA0000 · 14/10'), 'resumen: tránsito');
 
 // Sin convalidada: terminal por depósito del manifiesto; la fecha de relleno 20260101 se descarta

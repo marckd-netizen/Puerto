@@ -202,10 +202,11 @@ encabezado('Arribos Montevideo', (int) ($cfg['auto_refresh'] ?? 300));
                 <?php if ($viajes): ?><span class="viaje"><?= e(implode(' / ', $viajes)) ?></span><?php endif; ?>
                 <?php if ($f['contenedores']): $clientesFila = array_unique(array_filter(array_column($f['contenedores'], 'cliente'))); ?>
                     <details class="contenedores-buque">
-                        <summary>📦 <?= count($f['contenedores']) ?> contenedor<?= count($f['contenedores']) > 1 ? 'es' : '' ?><?= $clientesFila ? ' · ' . e(implode(', ', array_slice($clientesFila, 0, 2))) . (count($clientesFila) > 2 ? ' y ' . (count($clientesFila) - 2) . ' más' : '') : '' ?></summary>
+                        <?php $enStock = count(array_filter($f['contenedores'], fn($c) => (stockContenedor($c, $cfg)['estado'] ?? '') === 'en_stock')); ?>
+                        <summary>📦 <?= count($f['contenedores']) ?> contenedor<?= count($f['contenedores']) > 1 ? 'es' : '' ?><?= $enStock ? " · $enStock en stock" : '' ?><?= $clientesFila ? ' · ' . e(implode(', ', array_slice($clientesFila, 0, 2))) . (count($clientesFila) > 2 ? ' y ' . (count($clientesFila) - 2) . ' más' : '') : '' ?></summary>
                         <ul>
                             <?php foreach ($f['contenedores'] as $c): ?>
-                                <li><strong><?= e(Validacion::formatearContenedor($c['numero'])) ?></strong> · Carpeta <?= e($c['carpeta']) ?><?= $c['cliente'] ? ' · ' . e($c['cliente']) : '' ?></li>
+                                <li><strong><?= e(Validacion::formatearContenedor($c['numero'])) ?></strong> · Carpeta <?= e($c['carpeta']) ?><?= $c['cliente'] ? ' · ' . e($c['cliente']) : '' ?> <?= etiquetaStock($c, $cfg) ?></li>
                             <?php endforeach; ?>
                         </ul>
                     </details>

@@ -84,7 +84,15 @@ Por eso el buque se busca así, en este orden:
 
 En la página se aclara de dónde salió el buque ("según manifiesto 291201" o "deducido por terminal y fecha").
 Además, cada contenedor muestra un resumen: buque, llegada, agencia y conocimiento según el manifiesto; descarga, origen y destino, manifiesto y liberación, DUA,
-mensajes simplificados, último movimiento de stock, tránsito e incautaciones.
+mensajes simplificados, tránsito e incautaciones.
+
+**Stock:** con los movimientos de stock de Lucía (`MOVIMSTOCK`), cada contenedor muestra una etiqueta, tanto en el
+tablero (debajo del buque) como en la página Contenedores:
+- **En stock** (verde): tiene una entrada en un depósito sin salida posterior. Se indica el depósito y desde cuándo.
+- **Salió del stock** (gris): salió de todos los depósitos en los que entró.
+- **Sin stock todavía** (amarillo): Lucía no informa ninguna entrada.
+
+El nombre del depósito sale de `lucia → depositos` en `config.php` (por ejemplo `'1650' => 'TCP'`). Ahí se pueden agregar otros.
 
 Dirección: `https://servicios.aduanas.gub.uy/luciaws/awsdatcont.aspx?wsdl`. Si la Aduana
 habilita el acceso solo desde ciertas direcciones IP, la del servidor del sitio tiene que estar habilitada.

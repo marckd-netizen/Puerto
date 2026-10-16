@@ -249,10 +249,7 @@ final class LuciaSoap implements ConsultaLucia
         foreach ($ms as $m) {
             $resumen[] = "Mensaje simplificado {$m['ADUANA']}-{$m['ANO']}-{$m['NUMERO']} · estado {$m['ESTADO']}";
         }
-        if ($ultimo = self::masReciente($stock, 'FECHA')) {
-            $resumen[] = 'Último movimiento de stock: ' . (($ultimo['TIPO'] ?? '') === 'SAL' ? 'salida' : 'entrada')
-                . " depósito {$ultimo['DEPOSITO']} · " . substr(Texto::mostrarFecha(Texto::fecha($ultimo['FECHA'] ?? null)), 0, 5);
-        }
+        $situacionStock = self::situacionStock($stock);
         if ($ultimo = self::masReciente($viajes, 'FECHA')) {
             $resumen[] = "Tránsito: viaje {$ultimo['VIAJE']} · matrícula {$ultimo['MATRICULA']} · "
                 . substr(Texto::mostrarFecha(Texto::fecha($ultimo['FECHA'] ?? null)), 0, 5) . " · estado {$ultimo['ESTADO']}";
@@ -269,10 +266,61 @@ final class LuciaSoap implements ConsultaLucia
             null,
             null,
             $fecha,
-            ['secciones_con_datos' => $conDatos, 'manifiesto' => $manifiesto, 'claves_manifiesto' => $claves, 'mensaje' => $mensaje, 'resumen' => $resumen, 'respuesta' => $datos],
+            ['secciones_con_datos' => $conDatos, 'stock' => $situacionStock, 'manifiesto' => $manifiesto, 'claves_manifiesto' => $claves, 'mensaje' => $mensaje, 'resumen' => $resumen, 'respuesta' => $datos],
             $terminal,
             $resumen,
         );
+    }
+
+    /**
+     * Si el contenedor está en stock según los movimientos de MOVIMSTOCK: en cada depósito se compara
+     * la última entrada (ENT) con la última salida (SAL). Queda en stock en el depósito cuya entrada
+     * no tiene una salida posterior (si la salida es del mismo día, se toma como que ya salió).
+     *
+     * @return array{estado: 'en_stock'|'salio'|'sin_stock', deposito: ?string, fecha: ?string} fecha "Y-m-d"
+     */
+    public static function situacionStock(array $movimientos): array
+    {
+        $porDeposito = [];
+        foreach ($movimientos as $m) {
+            $tipo = strtoupper(trim((string) ($m['TIPO'] ?? '')));
+            $fecha = substr(trim((string) ($m['FECHA'] ?? '')), 0, 10);
+            $dep = trim((string) ($m['DEPOSITO'] ?? ''));
+            if (!in_array($tipo, ['ENT', 'SAL'], true) || $fecha === '') {
+                continue;
+            }
+            if ($fecha > ($porDeposito[$dep][$tipo] ?? '')) {
+                $porDeposito[$dep][$tipo] = $fecha;
+            }
+        }
+        $enStock = null;
+        $salida = null;
+        foreach ($porDeposito as $dep => $f) {
+            $dep = (string) $dep;
+            if (isset($f['ENT']) && (!isset($f['SAL']) || $f['SAL'] < $f['ENT'])) {
+                if ($enStock === null || $f['ENT'] > $enStock['fecha']) {
+                    $enStock = ['estado' => 'en_stock', 'deposito' => $dep, 'fecha' => $f['ENT']];
+                }
+            } elseif (isset($f['SAL']) && ($salida === null || $f['SAL'] > $salida['fecha'])) {
+                $salida = ['estado' => 'salio', 'deposito' => $dep, 'fecha' => $f['SAL']];
+            }
+        }
+        return $enStock ?? $salida ?? ['estado' => 'sin_stock', 'deposito' => null, 'fecha' => null];
+    }
+
+    /**
+     * Situación de stock guardada en el detalle de un contenedor. Los consultados antes de que existiera
+     * se calculan con la respuesta completa de Lucía, que también se guarda. null si no hay datos de Lucía.
+     */
+    public static function stockDeDetalle(array $detalle): ?array
+    {
+        if (isset($detalle['stock']['estado'])) {
+            return $detalle['stock'];
+        }
+        if (!isset($detalle['respuesta']) || !is_array($detalle['respuesta']) || !isset($detalle['secciones_con_datos'])) {
+            return null;
+        }
+        return self::situacionStock(self::items($detalle['respuesta'], 'MOVIMSTOCK', 'Movimiento'));
     }
 
     /** Código de terminal (TCP, MONTECON) según el operador o el depósito, con las equivalencias de config.php. */
