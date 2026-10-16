@@ -194,8 +194,9 @@ se habilitan con una **clave de instalación**:
 3. Entrá al sitio: al crear el primer usuario se pide esa misma clave.
 4. Cuando todo funcione, volvé a dejar `'clave_instalacion' => ''`.
 
-La lectura cada 2 horas se programa en el panel del hosting (en cPanel: "Cron Jobs"), por ejemplo:
-`0 */2 * * * php /home/USUARIO/ruta/cron/actualizar.php; php /home/USUARIO/ruta/cron/contenedores.php`.
+La lectura cada 2 horas se programa en el panel del hosting (en cPanel: "Cron Jobs"), con el comando
+`/bin/bash /home/USUARIO/ruta/al/sitio/herramientas/tareas.sh` y la frecuencia "cada 2 horas" (`0 */2 * * *`).
+El script busca un PHP 8.1 o más nuevo (en cPanel el `php` del cron suele ser otra versión) y anota todo en `data/cron.log`.
 Si la Aduana habilita Lucía solo para ciertas IP, hay que pedir que habiliten la IP del hosting.
 
 ## Si algo falla
