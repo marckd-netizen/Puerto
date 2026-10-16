@@ -59,6 +59,10 @@ final class Lector
             foreach (['eta', 'etb', 'etd', 'cierre'] as $campoFecha) {
                 if (array_key_exists($campoFecha, $f)) {
                     $f[$campoFecha] = Texto::fecha($f[$campoFecha]);
+                    // Si la terminal publica sus horas en otra zona (p. ej. UTC), se pasan a hora de Uruguay.
+                    if (!empty($terminal['zona_horaria'])) {
+                        $f[$campoFecha] = Texto::desdeZona($f[$campoFecha], $terminal['zona_horaria']);
+                    }
                 }
             }
             foreach ($f as $k => $v) {

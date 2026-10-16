@@ -55,6 +55,20 @@ final class Texto
         return $s;
     }
 
+    /**
+     * Pasa una fecha "Y-m-d H:i" publicada en otra zona horaria (por ejemplo 'UTC') a la hora local.
+     * Las fechas en otro formato se devuelven igual.
+     */
+    public static function desdeZona(?string $fecha, string $zona): ?string
+    {
+        if ($fecha === null || !preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/', $fecha)) {
+            return $fecha;
+        }
+        return (new DateTimeImmutable($fecha, new DateTimeZone($zona)))
+            ->setTimezone(new DateTimeZone(date_default_timezone_get()))
+            ->format('Y-m-d H:i');
+    }
+
     private static function armar(int $a, int $mes, int $d, ?string $h, ?string $min): ?string
     {
         if ($a < 1900) {

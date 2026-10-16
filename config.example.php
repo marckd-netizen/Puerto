@@ -130,6 +130,9 @@ return [
             // Montecon no publica estado: "Esperado" antes del comienzo de operaciones (ETB),
             // "Operando" hasta la salida y "Zarpado" después.
             'estado_por_fechas' => true,
+            // Zona horaria en que Montecon publica sus fechas. Vacío = hora de Uruguay.
+            // Si todas las horas aparecen corridas 3 horas, poner 'UTC'.
+            'zona_horaria' => '',
             // Igual que la página de Montecon, no se muestran los marcados como ocultos.
             'excluir_si' => ['noMostrarSchedule' => true],
             'columnas' => [

@@ -463,5 +463,15 @@ verificar($us->borrar($idM) === null && !$us->verificar('marcelo', 'nueva-clave-
 $conCfg = new Usuarios($db6, ['usuarios' => ['admin' => password_hash('desde-config', PASSWORD_DEFAULT)]]);
 verificar($conCfg->verificar('admin', 'desde-config') && count($conCfg->lista()) === 2, 'también valen los usuarios de config.php');
 
+echo "Zona horaria de una terminal\n";
+verificar(Texto::desdeZona('2026-10-07 10:37', 'UTC') === '2026-10-07 07:37', 'UTC → hora de Uruguay (−3)');
+verificar(Texto::desdeZona('2026-10-08 01:00', 'UTC') === '2026-10-07 22:00', 'cruza el cambio de día');
+verificar(Texto::desdeZona(null, 'UTC') === null && Texto::desdeZona('a confirmar', 'UTC') === 'a confirmar', 'sin fecha o texto: sin cambios');
+$tMon = $base['terminales']['MONTECON'];
+$tMon['url'] = __DIR__ . '/fixtures/montecon_schedule_1.json';
+$tMon['zona_horaria'] = 'UTC';
+$xiamenUtc = array_values(array_filter($lector->leerTerminal($tMon), fn($f) => $f['buque'] === 'XIAMEN EXPRESS'))[0];
+verificar($xiamenUtc['etb'] === '2026-10-07 04:37' && $xiamenUtc['eta'] === '2026-10-07 00:00', "con 'zona_horaria' => 'UTC' las horas de Montecon se corren 3 horas");
+
 echo $fallas ? "\n$fallas prueba(s) fallaron\n" : "\nTodas las pruebas pasaron\n";
 exit($fallas ? 1 : 0);
