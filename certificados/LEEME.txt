@@ -1,0 +1,9 @@
+cacert.pem: certificados raíz de Mozilla (los mismos que usa Firefox), tomados del paquete
+certifi 2026.7.22 (https://pypi.org/project/certifi/, licencia MPL 2.0). Es la lista que publica
+curl en https://curl.se/ca/cacert.pem.
+
+Sirve para que PHP en Windows (AppServ, XAMPP) pueda verificar los sitios HTTPS de las terminales
+y de la Aduana. Se usa solo si PHP no tiene configurada otra lista (openssl.cafile / curl.cainfo)
+ni se indicó una en config.php (ca_bundle).
+
+Para actualizarla, reemplazar este archivo por la versión nueva de https://curl.se/ca/cacert.pem.

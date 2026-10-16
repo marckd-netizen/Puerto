@@ -53,6 +53,10 @@ final class Http
         if ($ca !== null) {
             $o[CURLOPT_CAINFO] = $ca;
         }
+        if (PHP_OS_FAMILY === 'Windows' && defined('CURLSSLOPT_NATIVE_CA')) {
+            // En Windows, aceptar también los certificados del sistema (los mismos que usa el navegador).
+            $o[CURLOPT_SSL_OPTIONS] = CURLSSLOPT_NATIVE_CA;
+        }
         curl_setopt_array($ch, $o);
         $respuesta = curl_exec($ch);
         $codigo = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
@@ -151,6 +155,8 @@ final class Http
                 }
             }
         }
-        return null;
+        // Lista incluida en el proyecto (certificados raíz de Mozilla, ver certificados/LEEME.txt).
+        $propia = dirname(__DIR__) . DIRECTORY_SEPARATOR . 'certificados' . DIRECTORY_SEPARATOR . 'cacert.pem';
+        return is_file($propia) ? $propia : null;
     }
 }

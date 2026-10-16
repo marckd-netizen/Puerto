@@ -37,6 +37,19 @@ fila($filas, extension_loaded('curl') || extension_loaded('openssl'), 'Extensió
         ? 'No está activa. No hace falta: el sitio se conecta con las funciones de PHP y openssl.'
         : 'No está activa, y tampoco openssl: hace falta al menos openssl para conectarse por HTTPS.'));
 
+// 2b. Certificados para HTTPS (en Windows PHP no suele tener la lista configurada)
+$caIni = ini_get('openssl.cafile') ? ini_get('openssl.cafile') : ini_get('curl.cainfo');
+$caPropia = $raiz . DIRECTORY_SEPARATOR . 'certificados' . DIRECTORY_SEPARATOR . 'cacert.pem';
+if ($caIni) {
+    fila($filas, is_file($caIni), 'Certificados HTTPS', is_file($caIni) ? 'php.ini indica ' . $caIni : 'php.ini indica ' . $caIni . ', pero ese archivo no existe.');
+} elseif (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
+    fila($filas, is_file($caPropia), 'Certificados HTTPS', is_file($caPropia)
+        ? 'Se usa la lista incluida en el sitio (certificados/cacert.pem).'
+        : 'Falta certificados/cacert.pem: sin esa lista no se puede conectar con las terminales ni con Lucía.');
+} else {
+    fila($filas, true, 'Certificados HTTPS', 'Se usan los del sistema.');
+}
+
 // 3. config.php
 $archivoConfig = getenv('PUERTO_CONFIG') ? getenv('PUERTO_CONFIG') : $raiz . DIRECTORY_SEPARATOR . 'config.php';
 $cfg = null;
