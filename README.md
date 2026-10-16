@@ -92,6 +92,9 @@ tablero (debajo del buque) como en la página Contenedores:
 - **Salió del stock** (gris): salió de todos los depósitos en los que entró.
 - **Sin stock todavía** (amarillo): Lucía no informa ninguna entrada.
 
+Cuando un contenedor ya ingresó a stock (aunque después haya salido), **no se consulta más en Lucía**: queda como
+"Ingresó a stock (no se consulta más)". Si hiciera falta, se puede consultar a mano con el botón de la página Contenedores.
+
 El nombre del depósito sale de `lucia → depositos` en `config.php` (por ejemplo `'1650' => 'TCP'`). Ahí se pueden agregar otros.
 
 Dirección: `https://servicios.aduanas.gub.uy/luciaws/awsdatcont.aspx?wsdl`. Si la Aduana

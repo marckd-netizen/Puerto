@@ -183,7 +183,7 @@ final class Contenedores
 
     /**
      * Consulta en Lucía los contenedores activos que no se consultaron en las últimas horas
-     * y los vincula con la escala del buque.
+     * y los vincula con la escala del buque. Los que ya ingresaron a stock no se consultan más.
      * @return array{consultados: int, encontrados: int, vinculados: int, errores: list<string>}
      */
     public function consultarPendientes(ConsultaLucia $lucia, array $cfg, ?int $ahora = null, ?callable $log = null): array
@@ -192,12 +192,19 @@ final class Contenedores
         $res = ['consultados' => 0, 'encontrados' => 0, 'vinculados' => 0, 'errores' => []];
         $limite = date('Y-m-d H:i:s', $ahora - (int) (($cfg['reconsultar_horas'] ?? 2) * 3600) + 60);
 
-        $st = $this->db->prepare('SELECT * FROM contenedores WHERE activo = 1 AND (lucia_consulta IS NULL OR lucia_consulta < ?)
-            ORDER BY lucia_consulta IS NOT NULL, lucia_consulta LIMIT ' . (int) ($cfg['max_por_ejecucion'] ?? 200));
+        $st = $this->db->prepare("SELECT * FROM contenedores WHERE activo = 1 AND lucia_estado <> 'en_stock'
+            AND (lucia_consulta IS NULL OR lucia_consulta < ?)
+            ORDER BY lucia_consulta IS NOT NULL, lucia_consulta LIMIT " . (int) ($cfg['max_por_ejecucion'] ?? 200));
         $st->execute([$limite]);
 
-        foreach ($st->fetchAll() as $i => $c) {
-            if ($i > 0 && ($cfg['pausa_segundos'] ?? 0) > 0) {
+        $i = 0;
+        foreach ($st->fetchAll() as $c) {
+            // Consultados antes de esta regla: si la última respuesta ya mostraba stock, no hace falta consultar.
+            if ($c['lucia_estado'] === 'encontrado' && self::ingresoAStock(json_decode((string) $c['lucia_detalle'], true) ?: [])) {
+                $this->db->prepare("UPDATE contenedores SET lucia_estado = 'en_stock' WHERE id = ?")->execute([$c['id']]);
+                continue;
+            }
+            if ($i++ > 0 && ($cfg['pausa_segundos'] ?? 0) > 0) {
                 usleep((int) ($cfg['pausa_segundos'] * 1_000_000));
             }
             $res['consultados']++;
@@ -306,9 +313,10 @@ final class Contenedores
         }
         $mismaEscala = $escalaId !== null && $c['escala_id'] !== null && (int) $c['escala_id'] === $escalaId;
         $segunManifiesto = $manifiestoUsado !== null ? " (según manifiesto $manifiestoUsado)" : '';
-        $this->db->prepare("UPDATE contenedores SET lucia_estado = 'encontrado', lucia_consulta = ?, lucia_buque = ?, lucia_viaje = ?,
+        $this->db->prepare("UPDATE contenedores SET lucia_estado = ?, lucia_consulta = ?, lucia_buque = ?, lucia_viaje = ?,
                 lucia_fecha = ?, lucia_mensaje = ?, lucia_detalle = ?, escala_id = ?, vinculado = ? WHERE id = ?")
             ->execute([
+                self::ingresoAStock($detalle) ? 'en_stock' : 'encontrado',
                 $cuando, $buque, $viaje, $fecha,
                 mb_substr(trim(match (true) {
                     $porTerminal && $buque !== null => "El buque $buque$segunManifiesto no figura en el tablero; se dedujo por terminal ({$r->terminal}) y fecha de descarga (" . Texto::mostrarFecha($r->fecha) . ')',
@@ -419,6 +427,12 @@ final class Contenedores
     // ----------------------------------------------------------------- consultas
 
     /** Contenedores activos vinculados, agrupados por escala. @return array<int, list<array>> */
+    /** Ya entró a algún depósito (aunque después haya salido): no hace falta seguir consultándolo. */
+    public static function ingresoAStock(array $detalle): bool
+    {
+        return in_array(LuciaSoap::stockDeDetalle($detalle)['estado'] ?? null, ['en_stock', 'salio'], true);
+    }
+
     public function porEscala(): array
     {
         $st = $this->db->query('SELECT c.*, cl.nombre AS cliente, cl.rut FROM contenedores c

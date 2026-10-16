@@ -387,6 +387,13 @@ $fila = $db4->query("SELECT c.lucia_mensaje, c.lucia_detalle, e.buque FROM conte
 verificar($r['vinculados'] === 1 && $fila['buque'] === 'BUQUE DE LA DESCARGA', 'HAMU-464008-4 queda vinculado al buque que descargaba en TCP');
 verificar(str_contains((string) $fila['lucia_mensaje'], 'deducido por terminal (TCP)'), 'se aclara que el buque es deducido');
 verificar(count(json_decode($fila['lucia_detalle'], true)['resumen']) >= 5, 'se guarda el resumen para mostrar');
+verificar($db4->query("SELECT lucia_estado FROM contenedores WHERE numero = 'HAMU4640084'")->fetchColumn() === 'en_stock', 'ya ingresó a stock → queda marcado');
+$r = $cont4->consultarPendientes($luciaFija, ['pausa_segundos' => 0, 'reconsultar_horas' => 2], strtotime('2026-10-15 12:00'));
+verificar($r['consultados'] === 0, 'un contenedor que ya ingresó a stock no se vuelve a consultar');
+// Consultado antes de esta regla (quedó "encontrado"): se marca con la respuesta guardada, sin consultar.
+$db4->exec("UPDATE contenedores SET lucia_estado = 'encontrado' WHERE numero = 'HAMU4640084'");
+$r = $cont4->consultarPendientes($luciaFija, ['pausa_segundos' => 0, 'reconsultar_horas' => 2], strtotime('2026-10-15 12:00'));
+verificar($r['consultados'] === 0 && $db4->query("SELECT lucia_estado FROM contenedores WHERE numero = 'HAMU4640084'")->fetchColumn() === 'en_stock', 'los ya consultados con stock se marcan sin volver a consultar');
 
 echo "Buque por número de manifiesto (afMicXmlunif)\n";
 verificar($hamu->detalle['claves_manifiesto'] === [['1', '0', '291201', '1650', '20260101']], 'la consulta del contenedor obtiene la clave del manifiesto (LINMANIF y CONVALIDADA coinciden)');
@@ -410,7 +417,7 @@ $manifFalso = new class implements BuscadorManifiesto {
 $ins->execute(['MONTECON', 'e', 'BUQUE DE LA DESCARGA', '641W', '2026-10-03 06:00', '2026-10-03 07:00', '2026-10-04 07:00', 1]);
 $idPorNombre = (int) $db4->lastInsertId();
 $cont4->usarManifiestos($manifFalso);
-$db4->exec('UPDATE contenedores SET lucia_consulta = NULL');
+$db4->exec("UPDATE contenedores SET lucia_consulta = NULL, lucia_estado = 'pendiente'");
 $cont4->guardarContenedor('CSQU3054383', '2026-501');
 $cont4->consultarPendientes($luciaFija, ['pausa_segundos' => 0], strtotime('2026-10-14 12:00'));
 $filas4 = $db4->query('SELECT numero, escala_id, lucia_buque, lucia_mensaje FROM contenedores ORDER BY numero')->fetchAll(PDO::FETCH_UNIQUE);
@@ -422,7 +429,7 @@ $manifFalla = new class implements BuscadorManifiesto {
     public function consultar(array $clave): ResultadoManifiesto { throw new RuntimeException('servicio caído'); }
 };
 $db4->exec('DELETE FROM manifiestos');
-$db4->exec('UPDATE contenedores SET lucia_consulta = NULL');
+$db4->exec("UPDATE contenedores SET lucia_consulta = NULL, lucia_estado = 'pendiente'");
 $cont4->usarManifiestos($manifFalla);
 $r = $cont4->consultarPendientes($luciaFija, ['pausa_segundos' => 0], strtotime('2026-10-14 12:00'));
 $f = $db4->query("SELECT e.buque, c.lucia_mensaje FROM contenedores c JOIN escalas e ON e.id = c.escala_id WHERE c.numero = 'HAMU4640084'")->fetch();

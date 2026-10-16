@@ -49,7 +49,7 @@ function etiquetaTerminal(string $codigo, array $cfg): string
  */
 function stockContenedor(array $c, array $cfg): ?array
 {
-    if (($c['lucia_estado'] ?? '') !== 'encontrado') {
+    if (!in_array($c['lucia_estado'] ?? '', ['encontrado', 'en_stock'], true)) {
         return null;
     }
     $s = LuciaSoap::stockDeDetalle(json_decode((string) ($c['lucia_detalle'] ?? ''), true) ?: []);

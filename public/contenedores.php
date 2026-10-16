@@ -12,6 +12,7 @@ $servicio = new Contenedores($db);
 const ESTADOS_LUCIA = [
     'pendiente'     => 'Sin consultar',
     'encontrado'    => 'Encontrado',
+    'en_stock'      => 'Ingresó a stock (no se consulta más)',
     'no_encontrado' => 'No encontrado',
     'error'         => 'Error al consultar',
 ];
