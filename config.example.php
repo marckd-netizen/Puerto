@@ -140,7 +140,7 @@ return [
                 'viaje'    => ['nroViaje'],
                 'servicio' => ['servicio'],
                 'linea'    => ['armador'],
-                'eta'      => ['llegadaRada'],          // llegada a rada
+                'eta'      => ['llegada'],              // llegada (la que muestra Montecon; llegadaRada es antes)
                 'etb'      => ['comienzoOperaciones'],  // inicio de operaciones / atraque
                 'etd'      => ['salida'],
                 'cierre'   => ['cutOff'],

@@ -158,6 +158,8 @@ impiden ver `config.php`, el código y los datos desde el navegador.
    0 */2 * * * php /ruta/a/Puerto/cron/actualizar.php >> /ruta/a/Puerto/data/cron.log 2>&1; php /ruta/a/Puerto/cron/contenedores.php >> /ruta/a/Puerto/data/cron.log 2>&1
    ```
    Para probar a mano: `php cron/actualizar.php` (o `php cron/actualizar.php TCP` para una sola terminal).
+   Si cambiás en `config.php` qué columna corresponde a cada fecha, corré una vez
+   `php cron/actualizar.php MONTECON --sin-cambios`: corrige las fechas sin anotarlas como cambios ni resaltar las filas.
 
    **En Windows (AppServ, XAMPP):** doble clic en `herramientas\programar_tareas.bat` (si da error, clic derecho →
    Ejecutar como administrador). Crea una tarea del Programador de tareas que cada 2 horas ejecuta
@@ -208,7 +210,7 @@ Se usa la misma consulta que hace la página pública https://online2.montecon.c
 |---------------------|---------------|
 | `buque`, `nroViaje` | Buque y viaje |
 | `servicio`          | Servicio      |
-| `llegadaRada`       | ETA (llegada a rada) |
+| `llegada`           | ETA (la llegada que muestra la página de Montecon; `llegadaRada` es la llegada a rada, antes) |
 | `comienzoOperaciones` | ETB (inicio de operaciones) |
 | `salida`            | ETD           |
 

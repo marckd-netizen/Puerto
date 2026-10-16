@@ -145,7 +145,7 @@ $m1 = leer($lector, $base, 'MONTECON', 'montecon_schedule_1.json');
 verificar(count($m1) === 8, 'JSON: 8 buques (se excluye el marcado noMostrarSchedule)');
 $xiamen = array_values(array_filter($m1, fn($f) => $f['buque'] === 'XIAMEN EXPRESS'))[0];
 verificar($xiamen['viaje'] === 'NA641R' && $xiamen['servicio'] === 'MSC NORTH EUROPE', 'JSON: nroViaje y servicio');
-verificar($xiamen['eta'] === '2026-10-07 03:00' && $xiamen['etb'] === '2026-10-07 07:37' && $xiamen['etd'] === '2026-10-07 21:00', 'JSON: llegadaRada→ETA, comienzoOperaciones→ETB, salida→ETD');
+verificar($xiamen['eta'] === '2026-10-07 07:37' && $xiamen['etb'] === '2026-10-07 07:37' && $xiamen['etd'] === '2026-10-07 21:00', 'JSON: llegada→ETA, comienzoOperaciones→ETB, salida→ETD');
 verificar(Texto::fecha('0001-01-01T00:00:00') === null, 'fecha 0001-01-01 = sin dato');
 
 $db3 = Db::conectar(['driver' => 'sqlite', 'sqlite_path' => ':memory:']);
@@ -154,6 +154,16 @@ $sync3->sincronizar('MONTECON', $m1, '2026-10-07 08:00:00');
 $sync3->sincronizar('TCP', leer($lector, $base, 'TCP', 'tcp_lineup_1.json'), '2026-10-07 08:00:00');
 $r = $sync3->sincronizar('MONTECON', leer($lector, $base, 'MONTECON', 'montecon_schedule_2.json'), '2026-10-07 12:00:00');
 verificar($r['retiradas'] === 1 && $r['actualizadas'] === 2 && $r['cambios'] === 2, 'Montecon: 1 retirado, 2 buques con cambio de ETD');
+
+// --sin-cambios: actualiza los datos pero no anota cambios y toma la ETA nueva como original.
+$db3b = Db::conectar(['driver' => 'sqlite', 'sqlite_path' => ':memory:']);
+$sync3b = new Sincronizador($db3b, $base['campos_vigilados']);
+$sync3b->sincronizar('MONTECON', $m1, '2026-10-07 08:00:00');
+$db3b->exec("UPDATE escalas SET eta = '2026-10-01 00:00', eta_original = '2026-10-01 00:00' WHERE buque = 'XIAMEN EXPRESS'");
+$r = $sync3b->sincronizar('MONTECON', $m1, '2026-10-07 10:00:00', false);
+$x = $db3b->query("SELECT eta, eta_original FROM escalas WHERE buque = 'XIAMEN EXPRESS'")->fetch();
+verificar($r['cambios'] === 0 && (int) $db3b->query('SELECT COUNT(*) FROM cambios')->fetchColumn() === 0
+    && $x['eta'] === '2026-10-07 07:37' && $x['eta_original'] === '2026-10-07 07:37', 'sin registrar cambios: corrige la ETA sin anotar cambios ni resaltar');
 
 $t = new Tablero($base, strtotime('2026-10-07 12:30:00'));
 $filas = $t->filas($db3->query('SELECT * FROM escalas WHERE activa = 1')->fetchAll(), [], []);
@@ -471,7 +481,7 @@ $tMon = $base['terminales']['MONTECON'];
 $tMon['url'] = __DIR__ . '/fixtures/montecon_schedule_1.json';
 $tMon['zona_horaria'] = 'UTC';
 $xiamenUtc = array_values(array_filter($lector->leerTerminal($tMon), fn($f) => $f['buque'] === 'XIAMEN EXPRESS'))[0];
-verificar($xiamenUtc['etb'] === '2026-10-07 04:37' && $xiamenUtc['eta'] === '2026-10-07 00:00', "con 'zona_horaria' => 'UTC' las horas de Montecon se corren 3 horas");
+verificar($xiamenUtc['etb'] === '2026-10-07 04:37' && $xiamenUtc['eta'] === '2026-10-07 04:37', "con 'zona_horaria' => 'UTC' las horas de Montecon se corren 3 horas");
 
 echo $fallas ? "\n$fallas prueba(s) fallaron\n" : "\nTodas las pruebas pasaron\n";
 exit($fallas ? 1 : 0);

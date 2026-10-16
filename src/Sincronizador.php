@@ -18,7 +18,12 @@ final class Sincronizador
      * @param list<array<string, ?string>> $filas
      * @return array{nuevas:int, actualizadas:int, cambios:int, retiradas:int}
      */
-    public function sincronizar(string $terminal, array $filas, ?string $ahora = null): array
+    /**
+     * @param bool $registrarCambios false para una lectura de "puesta a punto" (por ejemplo, después de
+     *        corregir qué columna es la ETA): actualiza los datos sin anotar cambios ni resaltar filas,
+     *        y toma las fechas actuales como originales.
+     */
+    public function sincronizar(string $terminal, array $filas, ?string $ahora = null, bool $registrarCambios = true): array
     {
         $ahora ??= date('Y-m-d H:i:s');
         $res = ['nuevas' => 0, 'actualizadas' => 0, 'cambios' => 0, 'retiradas' => 0];
@@ -52,8 +57,8 @@ final class Sincronizador
                     }
                 }
 
-                $this->actualizar((int) $actual['id'], $fila, $ahora);
-                if ($cambios) {
+                $this->actualizar((int) $actual['id'], $fila, $ahora, !$registrarCambios);
+                if ($cambios && $registrarCambios) {
                     $ins = $this->db->prepare('INSERT INTO cambios (escala_id, campo, valor_anterior, valor_nuevo, detectado) VALUES (?, ?, ?, ?, ?)');
                     foreach ($cambios as $campo => [$antes, $despues]) {
                         $ins->execute([$actual['id'], $campo, $antes, $despues, $ahora]);
@@ -105,10 +110,14 @@ final class Sincronizador
         $this->db->prepare($sql)->execute($vals);
     }
 
-    private function actualizar(int $id, array $fila, string $ahora): void
+    private function actualizar(int $id, array $fila, string $ahora, bool $reiniciarEtaOriginal = false): void
     {
         $sets = ['ultima_vez = ?', 'activa = 1'];
         $vals = [$ahora];
+        if ($reiniciarEtaOriginal && array_key_exists('eta', $fila)) {
+            $sets[] = 'eta_original = ?';
+            $vals[] = $fila['eta'];
+        }
         foreach (self::CAMPOS as $c) {
             if (array_key_exists($c, $fila)) {
                 $sets[] = "$c = ?";
