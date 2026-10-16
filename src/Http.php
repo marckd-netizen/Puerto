@@ -57,7 +57,7 @@ final class Http
         $respuesta = curl_exec($ch);
         $codigo = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
         $error = curl_error($ch);
-        curl_close($ch);
+        unset($ch); // curl_close() no hace nada desde PHP 8.0 y es obsoleta en 8.5
         if ($respuesta === false) {
             throw new RuntimeException("No se pudo conectar con $url: $error");
         }
@@ -109,7 +109,11 @@ final class Http
 
         // Código de la última respuesta (puede haber redirecciones antes).
         $codigo = 0;
-        foreach ($http_response_header ?? [] as $linea) {
+        // PHP 8.4+ tiene http_get_last_response_headers(); $http_response_header es obsoleta en 8.5.
+        $cabeceras = function_exists('http_get_last_response_headers')
+            ? (http_get_last_response_headers() ?? [])
+            : ($http_response_header ?? []);
+        foreach ($cabeceras as $linea) {
             if (preg_match('#^HTTP/\S+\s+(\d{3})#', $linea, $m)) {
                 $codigo = (int) $m[1];
             }

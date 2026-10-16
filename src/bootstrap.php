@@ -29,6 +29,14 @@ function falla_inicial($mensaje)
     exit;
 }
 
+// En las páginas web, los avisos menores (Warning, Deprecated) van al log y no a la pantalla:
+// impresos en medio de la página rompen las redirecciones. Los errores graves se muestran
+// igual con el manejador de más abajo.
+if (PHP_SAPI !== 'cli') {
+    ini_set('display_errors', '0');
+    ini_set('log_errors', '1');
+}
+
 require_once __DIR__ . '/Http.php';
 require_once __DIR__ . '/Db.php';
 require_once __DIR__ . '/Texto.php';
