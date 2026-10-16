@@ -159,6 +159,10 @@ impiden ver `config.php`, el código y los datos desde el navegador.
    ```
    Para probar a mano: `php cron/actualizar.php` (o `php cron/actualizar.php TCP` para una sola terminal).
 
+   **En Windows (AppServ, XAMPP):** doble clic en `herramientas\programar_tareas.bat` (si da error, clic derecho →
+   Ejecutar como administrador). Crea una tarea del Programador de tareas que cada 2 horas ejecuta
+   `herramientas\tareas.bat`: lee las terminales, consulta Lucía y anota el resultado en `data\cron.log`.
+
 ## Si algo falla
 
 Abrí **`http://localhost/.../verificar.php`** desde la misma PC donde está instalado el sitio. Revisa:
