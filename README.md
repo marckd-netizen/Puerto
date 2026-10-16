@@ -185,6 +185,19 @@ impiden ver `config.php`, el código y los datos desde el navegador.
    Ejecutar como administrador). Crea una tarea del Programador de tareas que cada 2 horas ejecuta
    `herramientas\tareas.bat`: lee las terminales, consulta Lucía y anota el resultado en `data\cron.log`.
 
+## Instalar en un hosting (dominio propio)
+
+En un servidor de internet no se puede entrar por `localhost`, así que verificar.php y la creación del primer usuario
+se habilitan con una **clave de instalación**:
+1. En `config.php`, poné una clave de al menos 12 caracteres en `'clave_instalacion'`.
+2. Abrí `https://tu-dominio/verificar.php?clave=ESA-CLAVE` y corregí lo que marque en rojo.
+3. Entrá al sitio: al crear el primer usuario se pide esa misma clave.
+4. Cuando todo funcione, volvé a dejar `'clave_instalacion' => ''`.
+
+La lectura cada 2 horas se programa en el panel del hosting (en cPanel: "Cron Jobs"), por ejemplo:
+`0 */2 * * * php /home/USUARIO/ruta/cron/actualizar.php; php /home/USUARIO/ruta/cron/contenedores.php`.
+Si la Aduana habilita Lucía solo para ciertas IP, hay que pedir que habiliten la IP del hosting.
+
 ## Si algo falla
 
 Abrí **`http://localhost/.../verificar.php`** desde la misma PC donde está instalado el sitio. Revisa:

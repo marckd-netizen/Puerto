@@ -24,6 +24,10 @@ return [
 
     // Acceso al sitio. Generar cada usuario con: php cron/crear_usuario.php nombre
     'requiere_login' => true,
+    // Para instalar en un servidor de internet (hosting), donde no se puede entrar por "localhost":
+    // una clave de al menos 12 caracteres permite abrir verificar.php?clave=... y crear el primer
+    // usuario desde cualquier lugar. Cuando el sitio ya funcione, volver a dejarla vacía.
+    'clave_instalacion' => '',
     'usuarios' => [
         // 'marcelo' => '$2y$10$...',
     ],

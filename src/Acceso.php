@@ -53,10 +53,21 @@ final class Acceso
         $_SESSION['usuario'] = $usuario;
     }
 
-    /** La creación del primer usuario solo se permite desde la misma PC. */
+    /** La creación del primer usuario solo se permite desde la misma PC (o con la clave de instalación). */
     public static function esLocal(): bool
     {
         return in_array($_SERVER['REMOTE_ADDR'] ?? '', ['127.0.0.1', '::1'], true);
+    }
+
+    /** Hay una clave de instalación configurada (para instalar en un hosting). */
+    public static function hayClaveInstalacion(array $cfg): bool
+    {
+        return strlen((string) ($cfg['clave_instalacion'] ?? '')) >= 12;
+    }
+
+    public static function claveInstalacionValida(array $cfg, string $clave): bool
+    {
+        return self::hayClaveInstalacion($cfg) && hash_equals((string) $cfg['clave_instalacion'], $clave);
     }
 
     public static function salir(): void

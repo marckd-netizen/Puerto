@@ -6,14 +6,30 @@
  * funcione incluso con versiones de PHP que el sitio no soporta y pueda decir qué falta.
  */
 
+$raiz = dirname(dirname(__FILE__));
 $remota = isset($_SERVER['REMOTE_ADDR']) ? $_SERVER['REMOTE_ADDR'] : '';
 if (!in_array($remota, array('127.0.0.1', '::1'))) {
-    header('HTTP/1.1 403 Forbidden');
-    exit('Esta página solo se puede abrir desde el mismo equipo (localhost).');
+    // En un hosting: se permite con la clave de instalación de config.php (verificar.php?clave=...).
+    $claveConfig = '';
+    $archivo = getenv('PUERTO_CONFIG') ? getenv('PUERTO_CONFIG') : $raiz . DIRECTORY_SEPARATOR . 'config.php';
+    if (is_file($archivo)) {
+        $c = @include $archivo;
+        if (is_array($c) && isset($c['clave_instalacion'])) {
+            $claveConfig = (string) $c['clave_instalacion'];
+        }
+    }
+    $clave = isset($_GET['clave']) ? (string) $_GET['clave'] : '';
+    $ok = strlen($claveConfig) >= 12 && (function_exists('hash_equals') ? hash_equals($claveConfig, $clave) : $claveConfig === $clave);
+    if (!$ok) {
+        header('HTTP/1.1 403 Forbidden');
+        header('Content-Type: text/html; charset=utf-8');
+        exit('Esta página solo se puede abrir desde el mismo equipo (localhost).<br><br>Si el sitio está en un hosting: '
+            . 'poné una clave de al menos 12 caracteres en <b>\'clave_instalacion\'</b> de config.php y abrí '
+            . '<b>verificar.php?clave=</b><i>esa clave</i>. Cuando el sitio funcione, volvé a dejarla vacía.');
+    }
 }
 header('Content-Type: text/html; charset=utf-8');
 
-$raiz = dirname(dirname(__FILE__));
 $filas = array();
 function fila(&$filas, $ok, $que, $detalle)
 {
