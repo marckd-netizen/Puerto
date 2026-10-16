@@ -2,34 +2,23 @@
 /**
  * Consulta en Lucía los contenedores activos y los vincula con la escala de su buque.
  * Uso: php cron/contenedores.php
- * Conviene correrlo después de cron/actualizar.php, para vincular con las escalas recién leídas.
+ * Conviene correrlo después de cron/actualizar.php, para vincular con las escalas recién leídas
+ * (cron/tareas.php corre las dos cosas en ese orden).
  */
 declare(strict_types=1);
 
 require dirname(__DIR__) . '/src/bootstrap.php';
 
-if (PHP_SAPI !== 'cli') {
+if (Tareas::esPedidoWeb()) {
     http_response_code(403);
     exit;
 }
 
 $cfg = config();
-$db = Db::conectar($cfg['db']);
-$luciaCfg = $cfg['lucia'] ?? [];
-$ahora = date('Y-m-d H:i:s');
-
-try {
-    $lucia = Lucia::crear($luciaCfg);
-    $servicio = new Contenedores($db);
-    $servicio->usarManifiestos(Lucia::manifiestos($luciaCfg), (int) ($luciaCfg['reconsultar_horas'] ?? 2));
-    $r = $servicio->consultarPendientes($lucia, $luciaCfg, null, fn($linea) => print("  $linea\n"));
-} catch (Throwable $t) {
-    fwrite(STDERR, "[$ahora] LUCIA: ERROR {$t->getMessage()}\n");
-    exit(1);
-}
-
-echo "[$ahora] LUCIA: {$r['consultados']} consultados, {$r['encontrados']} encontrados, {$r['vinculados']} vinculados a un buque\n";
-foreach ($r['errores'] as $error) {
-    fwrite(STDERR, "[$ahora] LUCIA: ERROR $error\n");
-}
-exit($r['errores'] ? 1 : 0);
+$ok = Tareas::contenedores(
+    $cfg,
+    Db::conectar($cfg['db']),
+    fn($linea) => print("$linea\n"),
+    fn($linea) => fwrite(defined('STDERR') ? STDERR : fopen('php://stderr', 'w'), "$linea\n"),
+);
+exit($ok ? 0 : 1);

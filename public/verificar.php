@@ -123,6 +123,31 @@ if (is_array($cfg)) {
         : 'Todavía no hay usuarios: al entrar al sitio se pide crear el primero (desde esta misma PC).');
 }
 
+// 5b. Tarea automática (cron): comando sugerido para este servidor y última lectura
+$tareas = $raiz . DIRECTORY_SEPARATOR . 'cron' . DIRECTORY_SEPARATOR . 'tareas.php';
+$phpCli = 'php';
+$version = PHP_MAJOR_VERSION . PHP_MINOR_VERSION;
+foreach (array('/opt/cpanel/ea-php' . $version . '/root/usr/bin/php', '/opt/alt/php' . $version . '/usr/bin/php') as $candidato) {
+    if (@is_file($candidato)) {
+        $phpCli = $candidato;
+        break;
+    }
+}
+$comandoCron = $phpCli . ' ' . $tareas;
+$ultimaLectura = null;
+if (isset($pdo)) {
+    try {
+        $ultimaLectura = $pdo->query('SELECT fecha, ok, terminal, mensaje FROM lecturas ORDER BY id DESC LIMIT 1')->fetch(PDO::FETCH_ASSOC);
+    } catch (Exception $e) {
+    }
+}
+fila($filas, $ultimaLectura !== null && $ultimaLectura !== false, 'Lectura automática', ($ultimaLectura
+        ? 'Última: ' . $ultimaLectura['fecha'] . ' (' . $ultimaLectura['terminal'] . ': ' . ($ultimaLectura['ok'] ? 'bien' : 'error — ' . $ultimaLectura['mensaje']) . '). '
+        : 'Todavía no se leyó nunca. ')
+    . 'Comando para programar cada 2 horas (cPanel → Cron Jobs): ' . $comandoCron);
+$logCron = $raiz . DIRECTORY_SEPARATOR . 'data' . DIRECTORY_SEPARATOR . 'cron.log';
+$ultimasLineas = is_file($logCron) ? array_slice(file($logCron, FILE_IGNORE_NEW_LINES), -15) : array();
+
 // 6. Carpeta pública
 $publica = basename(dirname(__FILE__)) === 'public';
 fila($filas, $publica, 'Carpeta del sitio', $publica
@@ -163,6 +188,13 @@ foreach ($filas as $f) {
     </tr>
 <?php endforeach; ?>
 </table>
+<h2>Últimas líneas de data/cron.log</h2>
+<?php if ($ultimasLineas): ?>
+    <pre style="background:#fff;border:1px solid #e3e6ec;padding:10px;overflow-x:auto;font-size:12px"><?php echo htmlspecialchars(implode("\n", $ultimasLineas), ENT_QUOTES, 'UTF-8'); ?></pre>
+<?php else: ?>
+    <p>El log está vacío o no existe: la tarea automática todavía no corrió nunca. Revisá que el comando del cron sea
+        exactamente: <code><?php echo htmlspecialchars($comandoCron, ENT_QUOTES, 'UTF-8'); ?></code></p>
+<?php endif; ?>
 </main>
 </body>
 </html>

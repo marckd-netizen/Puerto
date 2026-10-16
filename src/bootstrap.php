@@ -52,6 +52,7 @@ require_once __DIR__ . '/LuciaManifiesto.php';
 require_once __DIR__ . '/Contenedores.php';
 require_once __DIR__ . '/Usuarios.php';
 require_once __DIR__ . '/Acceso.php';
+require_once __DIR__ . '/Tareas.php';
 
 /**
  * Errores no previstos: en lugar de un "HTTP ERROR 500" en blanco, se muestra una página
