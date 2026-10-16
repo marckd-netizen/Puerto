@@ -63,7 +63,7 @@ final class Http
         $error = curl_error($ch);
         unset($ch); // curl_close() no hace nada desde PHP 8.0 y es obsoleta en 8.5
         if ($respuesta === false) {
-            throw new RuntimeException("No se pudo conectar con $url: $error");
+            throw new RuntimeException("No se pudo conectar con $url: $error" . self::notaCertificados($error, $ca));
         }
         return ['codigo' => $codigo, 'cuerpo' => (string) $respuesta];
     }
@@ -107,8 +107,7 @@ final class Http
         }
         if ($respuesta === false) {
             $error = preg_replace('/^file_get_contents\([^)]*\): /', '', (string) $error);
-            throw new RuntimeException("No se pudo conectar con $url: " . ($error ?: 'sin respuesta')
-                . (str_contains((string) $error, 'certificate') ? ' (falta la lista de certificados: configurar ca_bundle en config.php)' : ''));
+            throw new RuntimeException("No se pudo conectar con $url: " . ($error ?: 'sin respuesta') . self::notaCertificados((string) $error, $ca));
         }
 
         // Código de la última respuesta (puede haber redirecciones antes).
@@ -123,6 +122,16 @@ final class Http
             }
         }
         return ['codigo' => $codigo, 'cuerpo' => $respuesta];
+    }
+
+    /** En errores de certificado, indica qué lista se usó, para saber qué corregir. */
+    private static function notaCertificados(string $error, ?string $ca): string
+    {
+        if (!str_contains(strtolower($error), 'certificate')) {
+            return '';
+        }
+        return ' [lista de certificados usada: ' . ($ca ?? ini_get('openssl.cafile') ?: ini_get('curl.cainfo') ?: 'ninguna')
+            . (extension_loaded('curl') && !self::$sinCurl ? ', con curl' : ', sin curl') . ']';
     }
 
     /**
