@@ -7,6 +7,7 @@ return [
         // 'mysql' en producción. 'sqlite' sirve para probar en local sin servidor MySQL.
         'driver'   => 'mysql',
         'host'     => 'localhost',
+        // 'socket' => '/var/lib/mysql/mysql.sock', // solo si hace falta indicar el socket de MySQL
         'port'     => 3306,
         'database' => 'puerto',
         'user'     => 'puerto',

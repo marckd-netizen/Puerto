@@ -23,13 +23,46 @@ final class Db
             return $pdo;
         }
 
-        $dsn = sprintf(
-            'mysql:host=%s;port=%d;dbname=%s;charset=utf8mb4',
-            $cfg['host'], $cfg['port'] ?? 3306, $cfg['database']
-        );
-        $pdo = new PDO($dsn, $cfg['user'], $cfg['password'], $opciones);
+        $pdo = self::conectarMysql($cfg, $opciones);
         self::actualizarEsquema($pdo);
         return $pdo;
+    }
+
+    /**
+     * Con host "localhost" PHP se conecta por el socket de MySQL. En muchos hostings el PHP del cron
+     * no sabe dónde está ese socket (aunque el sitio web sí) y falla con "No such file or directory":
+     * en ese caso se prueba con las ubicaciones habituales y, por último, por TCP (127.0.0.1).
+     */
+    private static function conectarMysql(array $cfg, array $opciones): PDO
+    {
+        $base = ';dbname=' . $cfg['database'] . ';charset=utf8mb4';
+        $puerto = (int) ($cfg['port'] ?? 3306);
+        $dsn = !empty($cfg['socket'])
+            ? 'mysql:unix_socket=' . $cfg['socket'] . $base
+            : 'mysql:host=' . $cfg['host'] . ';port=' . $puerto . $base;
+        try {
+            return new PDO($dsn, $cfg['user'], $cfg['password'], $opciones);
+        } catch (PDOException $e) {
+            $sinSocket = !empty($cfg['socket']) || strtolower((string) $cfg['host']) !== 'localhost'
+                || !str_contains($e->getMessage(), '[2002]');
+            if ($sinSocket) {
+                throw $e;
+            }
+            $alternativas = [];
+            foreach (['/var/lib/mysql/mysql.sock', '/var/run/mysqld/mysqld.sock', '/run/mysqld/mysqld.sock', '/tmp/mysql.sock'] as $socket) {
+                if (@file_exists($socket)) {
+                    $alternativas[] = 'mysql:unix_socket=' . $socket . $base;
+                }
+            }
+            $alternativas[] = 'mysql:host=127.0.0.1;port=' . $puerto . $base;
+            foreach ($alternativas as $alternativa) {
+                try {
+                    return new PDO($alternativa, $cfg['user'], $cfg['password'], $opciones);
+                } catch (PDOException) {
+                }
+            }
+            throw $e;
+        }
     }
 
     /**
