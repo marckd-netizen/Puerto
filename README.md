@@ -118,13 +118,18 @@ La respuesta puede traer datos de clientes: tachalos antes de compartirla.
 ## Acceso
 
 Como el sitio guarda datos de clientes, todas las páginas piden usuario y contraseña.
-Para crear un usuario:
 
-```bash
-php cron/crear_usuario.php marcelo
-```
+- **Primer usuario:** la primera vez que se entra al sitio, si todavía no hay usuarios, la pantalla de
+  ingreso pide crear uno. Por seguridad, solo desde la misma PC donde está instalado (`http://localhost/...`).
+- **Más usuarios:** desde la página **Usuarios** (agregar, cambiar contraseña, borrar).
+- Desde la consola también se puede: `php cron/crear_usuario.php nombre`.
+- Los usuarios se guardan en la tabla `usuarios`. Los que estén definidos en `config.php` (`'usuarios'`) también valen.
 
-El script pide la contraseña y muestra la línea que hay que agregar en `config.php`, dentro de `'usuarios'`.
+## Si el servidor web apunta a la carpeta del proyecto
+
+Lo ideal es que el servidor web apunte a `public/`. Si en XAMPP se copió la carpeta entera en `htdocs`,
+`http://localhost/Puerto/` lleva solo a `public/`. El `.htaccess` de la raíz y los de cada carpeta interna
+impiden ver `config.php`, el código y los datos desde el navegador.
 
 ## Instalación
 
@@ -147,7 +152,7 @@ El script pide la contraseña y muestra la línea que hay que agregar en `config
 3. `cp config.example.php config.php` y completar los datos de la base.
 4. Apuntar el servidor web a la carpeta `public/`. Solo esa carpeta debe quedar
    accesible desde internet.
-5. Crear al menos un usuario (ver "Acceso").
+5. Entrar al sitio desde la misma PC y crear el primer usuario (ver "Acceso").
 6. Programar la lectura con cron, cada 2 horas: primero las terminales y después Lucía.
    ```
    0 */2 * * * php /ruta/a/Puerto/cron/actualizar.php >> /ruta/a/Puerto/data/cron.log 2>&1; php /ruta/a/Puerto/cron/contenedores.php >> /ruta/a/Puerto/data/cron.log 2>&1

@@ -77,3 +77,11 @@ CREATE TABLE IF NOT EXISTS manifiestos (
     consultado  DATETIME     NOT NULL,
     detalle     TEXT         NULL
 );
+
+-- Usuarios del sitio (además de los que se definan en config.php)
+CREATE TABLE IF NOT EXISTS usuarios (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    nombre      VARCHAR(40)  NOT NULL UNIQUE,
+    clave_hash  VARCHAR(255) NOT NULL,
+    creado      DATETIME     NOT NULL
+);

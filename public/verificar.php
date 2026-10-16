@@ -64,7 +64,7 @@ if (is_array($cfg) && isset($cfg['db'])) {
         fila($filas, true, 'Conexión a la base', 'Conectado (' . $driver . ').');
 
         $faltanTablas = array();
-        foreach (array('escalas', 'cambios', 'lecturas', 'clientes', 'contenedores', 'manifiestos') as $tabla) {
+        foreach (array('escalas', 'cambios', 'lecturas', 'clientes', 'contenedores', 'manifiestos', 'usuarios') as $tabla) {
             try {
                 $pdo->query('SELECT 1 FROM ' . $tabla . ' LIMIT 1');
             } catch (Exception $e) {
@@ -81,10 +81,17 @@ if (is_array($cfg) && isset($cfg['db'])) {
 
 // 5. Usuarios para entrar
 if (is_array($cfg)) {
-    $hayUsuarios = !empty($cfg['usuarios']) || (isset($cfg['requiere_login']) && !$cfg['requiere_login']);
-    fila($filas, $hayUsuarios, 'Usuarios', $hayUsuarios
-        ? 'Hay ' . count(isset($cfg['usuarios']) ? $cfg['usuarios'] : array()) . ' usuario(s).'
-        : 'No hay usuarios: creá uno con "php cron/crear_usuario.php nombre" y agregalo en config.php.');
+    $enConfig = isset($cfg['usuarios']) ? count($cfg['usuarios']) : 0;
+    $enBase = 0;
+    if (isset($pdo)) {
+        try {
+            $enBase = (int) $pdo->query('SELECT COUNT(*) FROM usuarios')->fetchColumn();
+        } catch (Exception $e) {
+        }
+    }
+    fila($filas, true, 'Usuarios', ($enConfig + $enBase) > 0
+        ? 'Hay ' . ($enConfig + $enBase) . ' usuario(s).'
+        : 'Todavía no hay usuarios: al entrar al sitio se pide crear el primero (desde esta misma PC).');
 }
 
 // 6. Carpeta pública

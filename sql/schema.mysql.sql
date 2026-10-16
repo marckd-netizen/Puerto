@@ -85,3 +85,12 @@ CREATE TABLE IF NOT EXISTS manifiestos (
     consultado  DATETIME     NOT NULL,
     detalle     MEDIUMTEXT   NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Usuarios del sitio (además de los que se definan en config.php)
+CREATE TABLE IF NOT EXISTS usuarios (
+    id          INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    nombre      VARCHAR(40)  NOT NULL,
+    clave_hash  VARCHAR(255) NOT NULL,
+    creado      DATETIME     NOT NULL,
+    UNIQUE KEY uk_nombre (nombre)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

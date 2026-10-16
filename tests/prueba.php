@@ -445,5 +445,23 @@ verificar($primera === 'Manifiesto 277301: CAP SAN ARTEMISSIO · llegada 12/10 �
 $guardado = json_decode((string) $db5->query('SELECT detalle FROM manifiestos')->fetchColumn(), true);
 verificar(isset($guardado['cabecera'], $guardado['contenedores']) && !isset($guardado['respuesta']), 'del manifiesto se guarda solo cabecera y contenedores, no la respuesta entera');
 
+echo "Usuarios\n";
+$db6 = Db::conectar(['driver' => 'sqlite', 'sqlite_path' => ':memory:']);
+$us = new Usuarios($db6, []);
+verificar(!$us->hayAlguno(), 'instalación nueva: no hay usuarios');
+verificar($us->crear('marcelo', 'corta', 'corta') !== null, 'rechaza contraseña de menos de 8 caracteres');
+verificar($us->crear('marcelo', 'clave-larga-1', 'otra-cosa-1') !== null, 'rechaza contraseñas que no coinciden');
+verificar($us->crear('con espacio', 'clave-larga-1', 'clave-larga-1') !== null, 'rechaza nombres con espacios');
+verificar($us->crear('marcelo', 'clave-larga-1', 'clave-larga-1') === null && $us->hayAlguno(), 'crea el usuario');
+verificar($us->crear('marcelo', 'clave-larga-2', 'clave-larga-2') !== null, 'no duplica el nombre');
+verificar($us->verificar('marcelo', 'clave-larga-1') && !$us->verificar('marcelo', 'mala-clave'), 'verifica la contraseña');
+$idM = (int) $db6->query("SELECT id FROM usuarios WHERE nombre = 'marcelo'")->fetchColumn();
+verificar($us->borrar($idM) !== null, 'no deja borrar el único usuario');
+verificar($us->cambiarClave($idM, 'nueva-clave-1', 'nueva-clave-1') === null && $us->verificar('marcelo', 'nueva-clave-1'), 'cambia la contraseña');
+$us->crear('ana', 'clave-de-ana', 'clave-de-ana');
+verificar($us->borrar($idM) === null && !$us->verificar('marcelo', 'nueva-clave-1'), 'con otro usuario, sí se puede borrar');
+$conCfg = new Usuarios($db6, ['usuarios' => ['admin' => password_hash('desde-config', PASSWORD_DEFAULT)]]);
+verificar($conCfg->verificar('admin', 'desde-config') && count($conCfg->lista()) === 2, 'también valen los usuarios de config.php');
+
 echo $fallas ? "\n$fallas prueba(s) fallaron\n" : "\nTodas las pruebas pasaron\n";
 exit($fallas ? 1 : 0);

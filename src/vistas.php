@@ -23,7 +23,7 @@ function encabezado(string $titulo, int $refresh = 0, bool $menu = true): void
     <h1>⚓ Arribos Puerto de Montevideo</h1>
     <?php if ($menu): ?>
     <nav>
-        <a href="index.php">Arribos</a><a href="contenedores.php">Contenedores</a><a href="clientes.php">Clientes</a><a href="historial.php">Historial de cambios</a>
+        <a href="index.php">Arribos</a><a href="contenedores.php">Contenedores</a><a href="clientes.php">Clientes</a><a href="historial.php">Historial de cambios</a><a href="usuarios.php">Usuarios</a>
         <?php if (Acceso::usuario()): ?><span class="usuario"><?= e(Acceso::usuario()) ?> · <a href="salir.php">Salir</a></span><?php endif; ?>
     </nav>
     <?php endif; ?>

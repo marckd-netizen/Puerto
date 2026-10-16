@@ -3,8 +3,8 @@ declare(strict_types=1);
 
 /**
  * Inicio de sesión y protección de formularios.
- * Los usuarios se definen en config.php ('usuarios' => ['nombre' => hash]); el hash se
- * genera con: php cron/crear_usuario.php nombre
+ * Los usuarios se guardan en la tabla usuarios (página Usuarios) y, opcionalmente,
+ * en config.php ('usuarios' => ['nombre' => hash]).
  */
 final class Acceso
 {
@@ -36,16 +36,27 @@ final class Acceso
         session_start();
     }
 
-    public static function entrar(array $cfg, string $usuario, string $clave): bool
+    public static function entrar(Usuarios $usuarios, string $usuario, string $clave): bool
     {
-        $hash = $cfg['usuarios'][$usuario] ?? null;
-        if (!is_string($hash) || !password_verify($clave, $hash)) {
+        if (!$usuarios->verificar($usuario, $clave)) {
             sleep(1); // frena intentos repetidos
             return false;
         }
+        self::iniciarComo($usuario);
+        return true;
+    }
+
+    public static function iniciarComo(string $usuario): void
+    {
+        self::iniciarSesion();
         session_regenerate_id(true);
         $_SESSION['usuario'] = $usuario;
-        return true;
+    }
+
+    /** La creación del primer usuario solo se permite desde la misma PC. */
+    public static function esLocal(): bool
+    {
+        return in_array($_SERVER['REMOTE_ADDR'] ?? '', ['127.0.0.1', '::1'], true);
     }
 
     public static function salir(): void

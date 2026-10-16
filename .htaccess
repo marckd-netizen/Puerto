@@ -1,0 +1,11 @@
+# Si el servidor web apunta a la carpeta del proyecto (por ejemplo, XAMPP con la carpeta en htdocs),
+# todo se sirve desde public/ y el resto (config.php, código, datos) no se puede ver desde el navegador.
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteCond %{REQUEST_URI} !/public/
+    RewriteRule ^(.*)$ public/$1 [L]
+</IfModule>
+
+<Files "config.php">
+    Require all denied
+</Files>

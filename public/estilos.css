@@ -91,3 +91,6 @@ tr.fila-error > td { background: var(--cambio-claro); }
 ul.resumen-lucia { margin: 4px 0 0; padding-left: 16px; font-size: 12px; color: var(--suave); }
 ul.resumen-lucia li { margin: 1px 0; }
 .tablero td.numero { white-space: nowrap; }
+form.clave-en-linea { display: flex; flex-wrap: wrap; gap: 6px; }
+form.clave-en-linea input { font: inherit; padding: 4px 6px; border: 1px solid var(--borde); border-radius: 6px; background: var(--fondo); color: var(--texto); width: 120px; }
+form.login p { margin: 0; }
