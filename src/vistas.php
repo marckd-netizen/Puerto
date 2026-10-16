@@ -73,6 +73,41 @@ function etiquetaStock(array $c, array $cfg): string
     return $s === null ? '' : '<span class="stock stock-' . e($s['estado']) . '">' . e($s['texto']) . '</span>';
 }
 
+/**
+ * Ver los contenedores propios o los de todos. La elección se recuerda (cookie) y vale para el tablero
+ * y la página Contenedores. Devuelve el usuario por el que filtrar, o null para ver todos
+ * (también si el sitio se usa sin usuarios).
+ */
+function verContenedoresDe(): ?string
+{
+    $usuario = Acceso::usuario();
+    if ($usuario === null) {
+        return null;
+    }
+    $ver = $_GET['ver'] ?? null;
+    if (in_array($ver, ['mios', 'todos'], true)) {
+        setcookie('ver_contenedores', $ver, ['expires' => time() + 365 * 86400, 'path' => '/', 'samesite' => 'Lax']);
+    } else {
+        $ver = ($_COOKIE['ver_contenedores'] ?? 'mios') === 'todos' ? 'todos' : 'mios';
+    }
+    return $ver === 'mios' ? $usuario : null;
+}
+
+/** Selector "Míos / De todos" para los filtros (mantiene los demás filtros de la página). */
+function selectorVerContenedores(?string $filtro): string
+{
+    if (Acceso::usuario() === null) {
+        return '';
+    }
+    $html = '<span class="selector-ver">Contenedores:';
+    foreach (['mios' => 'Míos', 'todos' => 'De todos'] as $valor => $texto) {
+        $activo = ($valor === 'mios') === ($filtro !== null);
+        $url = '?' . http_build_query(['ver' => $valor] + array_diff_key($_GET, ['ver' => 1]));
+        $html .= $activo ? ' <strong>' . e($texto) . '</strong>' : ' <a href="' . e($url) . '">' . e($texto) . '</a>';
+    }
+    return $html . '</span>';
+}
+
 function esCampoFecha(string $campo): bool
 {
     return in_array($campo, ['eta', 'etb', 'etd', 'cierre'], true);

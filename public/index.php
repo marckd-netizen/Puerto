@@ -17,6 +17,7 @@ $fBuscar = trim($_GET['q'] ?? '');
 $fSoloCambios = !empty($_GET['cambios']);
 $fPasados = !empty($_GET['pasados']);
 $fMios = !empty($_GET['mios']);
+$verDe = verContenedoresDe();
 
 // Escalas activas
 $where = ['activa = 1'];
@@ -51,7 +52,7 @@ foreach ($st->fetchAll() as $c) {
 $filas = (new Tablero($cfg, $ahora))->filas($escalas, $ultimos, $recientes);
 
 // Contenedores propios vinculados a cada buque (por cualquiera de sus escalas)
-$contenedoresPorEscala = (new Contenedores($db))->porEscala();
+$contenedoresPorEscala = (new Contenedores($db))->porEscala($verDe);
 foreach ($filas as &$f) {
     $f['contenedores'] = [];
     foreach ($f['terminales'] as $e) {
@@ -148,7 +149,8 @@ encabezado('Arribos Montevideo', (int) ($cfg['auto_refresh'] ?? 300));
     <input type="search" name="q" value="<?= e($fBuscar) ?>" placeholder="Buscar buque, servicio, contenedor, carpeta o cliente">
     <label><input type="checkbox" name="cambios" value="1" <?= $fSoloCambios ? 'checked' : '' ?> onchange="this.form.submit()"> Solo con cambios (últimas <?= $horas ?> h)</label>
     <label><input type="checkbox" name="pasados" value="1" <?= $fPasados ? 'checked' : '' ?> onchange="this.form.submit()"> Incluir ya zarpados</label>
-    <label><input type="checkbox" name="mios" value="1" <?= $fMios ? 'checked' : '' ?> onchange="this.form.submit()"> Solo con contenedores míos</label>
+    <label><input type="checkbox" name="mios" value="1" <?= $fMios ? 'checked' : '' ?> onchange="this.form.submit()"> Solo buques con contenedores<?= $verDe !== null ? ' míos' : '' ?></label>
+    <?= selectorVerContenedores($verDe) ?>
     <details class="servicios">
         <summary>Servicios<?= $ocultos ? ' (' . count($ocultos) . ' ocultos)' : '' ?></summary>
         <div class="servicios-lista">
@@ -206,7 +208,7 @@ encabezado('Arribos Montevideo', (int) ($cfg['auto_refresh'] ?? 300));
                         <summary>📦 <?= count($f['contenedores']) ?> contenedor<?= count($f['contenedores']) > 1 ? 'es' : '' ?><?= $enStock ? " · $enStock en stock" : '' ?><?= $clientesFila ? ' · ' . e(implode(', ', array_slice($clientesFila, 0, 2))) . (count($clientesFila) > 2 ? ' y ' . (count($clientesFila) - 2) . ' más' : '') : '' ?></summary>
                         <ul>
                             <?php foreach ($f['contenedores'] as $c): ?>
-                                <li><strong><?= e(Validacion::formatearContenedor($c['numero'])) ?></strong> · Carpeta <?= e($c['carpeta']) ?><?= $c['cliente'] ? ' · ' . e($c['cliente']) : '' ?> <?= etiquetaStock($c, $cfg) ?></li>
+                                <li><strong><?= e(Validacion::formatearContenedor($c['numero'])) ?></strong> · Carpeta <?= e($c['carpeta']) ?><?= $c['cliente'] ? ' · ' . e($c['cliente']) : '' ?><?= $verDe === null && $c['usuario'] ? ' · <small>' . e($c['usuario']) . '</small>' : '' ?> <?= etiquetaStock($c, $cfg) ?></li>
                             <?php endforeach; ?>
                         </ul>
                     </details>

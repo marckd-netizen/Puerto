@@ -103,3 +103,6 @@ ul.resumen-lucia li { margin: 1px 0; }
 form.clave-en-linea { display: flex; flex-wrap: wrap; gap: 6px; }
 form.clave-en-linea input { font: inherit; padding: 4px 6px; border: 1px solid var(--borde); border-radius: 6px; background: var(--fondo); color: var(--texto); width: 120px; }
 form.login p { margin: 0; }
+
+.selector-ver { font-size: 13px; white-space: nowrap; }
+.selector-ver strong, .selector-ver a { margin-left: 4px; }

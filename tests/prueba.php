@@ -492,6 +492,29 @@ verificar($us->borrar($idM) === null && !$us->verificar('marcelo', 'nueva-clave-
 $conCfg = new Usuarios($db6, ['usuarios' => ['admin' => password_hash('desde-config', PASSWORD_DEFAULT)]]);
 verificar($conCfg->verificar('admin', 'desde-config') && count($conCfg->lista()) === 2, 'también valen los usuarios de config.php');
 
+echo "Contenedores por usuario\n";
+// Base creada con la versión anterior (sin la columna usuario): se agrega sola al conectar.
+$archivoViejo = tempnam(sys_get_temp_dir(), 'puerto');
+$vieja = new PDO('sqlite:' . $archivoViejo);
+$vieja->exec(preg_replace('/^\s*usuario\s+VARCHAR\(40\)\s+NULL,\n/m', '', file_get_contents(dirname(__DIR__) . '/sql/schema.sqlite.sql')));
+$vieja->exec("INSERT INTO contenedores (numero, carpeta, creado) VALUES ('CSQU3054383', '1', '2026-10-01 00:00:00')");
+unset($vieja);
+$db6 = Db::conectar(['driver' => 'sqlite', 'sqlite_path' => $archivoViejo]);
+verificar($db6->query('SELECT usuario FROM contenedores')->fetchColumn() === null, 'una base anterior recibe la columna usuario sin perder datos');
+$cont6 = new Contenedores($db6);
+$cont6->guardarContenedor('CSQU3054383', '1', null, 'ana');
+$cont6->guardarContenedor('MSKU9070323', '2', null, 'beto');
+$cont6->guardarContenedor('MSKU9070323', '2', null, 'ana');
+$duenos = $db6->query('SELECT numero, usuario FROM contenedores ORDER BY numero')->fetchAll(PDO::FETCH_KEY_PAIR);
+verificar($duenos === ['CSQU3054383' => 'ana', 'MSKU9070323' => 'beto'], 'el contenedor sin usuario pasa a quien lo vuelve a cargar; uno con dueño lo conserva');
+$cont6->importarContenedores("TGHU8785330\t3", 'beto');
+$db6->exec('UPDATE contenedores SET escala_id = NULL');
+$db6->exec("INSERT INTO escalas (terminal, clave, buque, primera_vez, ultima_vez) VALUES ('TCP', 'k', 'B', '2026-10-01', '2026-10-01')");
+$db6->exec('UPDATE contenedores SET escala_id = ' . (int) $db6->lastInsertId());
+verificar(count($cont6->porEscala('beto')[1] ?? []) === 2 && count($cont6->porEscala()[1] ?? []) === 3, 'tablero: los contenedores de un usuario o los de todos');
+unset($db6, $cont6);
+@unlink($archivoViejo);
+
 echo "Zona horaria de una terminal\n";
 verificar(Texto::desdeZona('2026-10-07 10:37', 'UTC') === '2026-10-07 07:37', 'UTC → hora de Uruguay (−3)');
 verificar(Texto::desdeZona('2026-10-08 01:00', 'UTC') === '2026-10-07 22:00', 'cruza el cambio de día');

@@ -8,6 +8,7 @@ $cfg = config();
 Acceso::exigir($cfg);
 $db = Db::conectar($cfg['db']);
 $servicio = new Contenedores($db);
+$verDe = verContenedoresDe();
 
 const ESTADOS_LUCIA = [
     'pendiente'     => 'Sin consultar',
@@ -23,11 +24,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $id = (int) ($_POST['id'] ?? 0);
     switch ($_POST['accion'] ?? '') {
         case 'guardar':
-            $r = $servicio->guardarContenedor((string) $_POST['numero'], (string) $_POST['carpeta'], (string) ($_POST['rut'] ?? ''));
+            $r = $servicio->guardarContenedor((string) $_POST['numero'], (string) $_POST['carpeta'], (string) ($_POST['rut'] ?? ''), Acceso::usuario());
             avisar($r['ok'] ? (str_contains($r['mensaje'], 'atención') ? 'atencion' : 'ok') : 'error', $r['mensaje']);
             break;
         case 'importar':
-            avisarImportacion($servicio->importarContenedores((string) $_POST['texto']), 'Contenedores');
+            avisarImportacion($servicio->importarContenedores((string) $_POST['texto'], Acceso::usuario()), 'Contenedores');
+            break;
+        case 'asignarme':
+            if (Acceso::usuario() !== null) {
+                $n = $db->prepare('UPDATE contenedores SET usuario = ? WHERE usuario IS NULL');
+                $n->execute([Acceso::usuario()]);
+                avisar('ok', $n->rowCount() . ' contenedor(es) sin usuario quedaron a tu nombre.');
+            }
             break;
         case 'consultar':
             try {
@@ -72,6 +80,11 @@ if ($fCliente) {
     $where[] = 'c.cliente_id = ?';
     $params[] = $fCliente;
 }
+if ($verDe !== null) {
+    $where[] = 'c.usuario = ?';
+    $params[] = $verDe;
+}
+$sinUsuario = Acceso::usuario() !== null ? (int) $db->query('SELECT COUNT(*) FROM contenedores WHERE usuario IS NULL')->fetchColumn() : 0;
 $st = $db->prepare('SELECT c.*, cl.nombre AS cliente, cl.rut,
         e.terminal, e.buque AS escala_buque, e.viaje AS escala_viaje, e.eta, e.etb, e.etd, e.estado AS escala_estado
     FROM contenedores c
@@ -89,6 +102,13 @@ $luciaConfigurada = ($cfg['lucia']['modo'] ?? 'pendiente') !== 'pendiente';
 encabezado('Contenedores');
 mostrarAvisos();
 ?>
+<?php if ($sinUsuario): ?>
+    <form method="post" class="aviso aviso-atencion">
+        <?= Acceso::campoToken() ?><input type="hidden" name="accion" value="asignarme">
+        Hay <?= $sinUsuario ?> contenedor(es) cargados antes de que se guardara quién los carga: solo se ven en "De todos".
+        <button type="submit" class="enlace">Pasarlos a mi nombre</button>
+    </form>
+<?php endif; ?>
 <?php if (!$luciaConfigurada): ?>
     <p class="aviso aviso-atencion">La consulta a Lucía todavía no está configurada: los contenedores se pueden cargar, pero no se van a vincular con los buques hasta configurarla.</p>
 <?php endif; ?>
@@ -142,6 +162,7 @@ mostrarAvisos();
         <?php endforeach; ?>
     </select>
     <label><input type="checkbox" name="archivados" value="1" <?= $fArchivados ? 'checked' : '' ?> onchange="this.form.submit()"> Ver archivados</label>
+    <?= selectorVerContenedores($verDe) ?>
     <button type="submit">Filtrar</button>
     <span class="sin-dato"><?= count($contenedores) ?> contenedores</span>
 </form>
@@ -159,7 +180,7 @@ mostrarAvisos();
                 <?= e(Validacion::formatearContenedor($c['numero'])) ?>
                 <?php if (!Validacion::digitoContenedorCorrecto($c['numero'])): ?><span class="advertencia" title="El dígito verificador no coincide: revisá el número">⚠</span><?php endif; ?>
             </td>
-            <td><?= e($c['carpeta']) ?></td>
+            <td><?= e($c['carpeta']) ?><?php if ($verDe === null && $c['usuario']): ?><div><small>Cargado por <?= e($c['usuario']) ?></small></div><?php endif; ?></td>
             <td><?= e($c['cliente']) ?: '<span class="sin-dato">—</span>' ?></td>
             <td>
                 <?= e(ESTADOS_LUCIA[$c['lucia_estado']] ?? $c['lucia_estado']) ?>

@@ -86,6 +86,11 @@ En la página se aclara de dónde salió el buque ("según manifiesto 291201" o 
 Además, cada contenedor muestra un resumen: buque, llegada, agencia y conocimiento según el manifiesto; descarga, origen y destino, manifiesto y liberación, DUA,
 mensajes simplificados, tránsito e incautaciones.
 
+**Contenedores de cada usuario:** cada contenedor guarda quién lo cargó. En el tablero y en la página Contenedores se elige
+"Contenedores: Míos / De todos" (se recuerda para la próxima vez). Los clientes son compartidos por todos.
+Los contenedores cargados antes de esta opción no tienen usuario: la página Contenedores ofrece pasarlos a tu nombre.
+La columna nueva se agrega sola a la base existente la primera vez que se abre el sitio.
+
 **Stock:** con los movimientos de stock de Lucía (`MOVIMSTOCK`), cada contenedor muestra una etiqueta, tanto en el
 tablero (debajo del buque) como en la página Contenedores:
 - **En stock** (verde): tiene una entrada en un depósito sin salida posterior. Se indica el depósito y desde cuándo.

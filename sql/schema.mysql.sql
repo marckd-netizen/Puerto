@@ -70,6 +70,7 @@ CREATE TABLE IF NOT EXISTS contenedores (
     lucia_detalle   MEDIUMTEXT   NULL,
     escala_id       INT UNSIGNED NULL,
     vinculado       DATETIME     NULL,
+    usuario         VARCHAR(40)  NULL,
     UNIQUE KEY uk_numero_carpeta (numero, carpeta),
     KEY idx_escala (escala_id),
     CONSTRAINT fk_contenedores_cliente FOREIGN KEY (cliente_id) REFERENCES clientes (id) ON DELETE SET NULL,

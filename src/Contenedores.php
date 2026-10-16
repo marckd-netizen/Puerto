@@ -77,7 +77,8 @@ final class Contenedores
     // ------------------------------------------------------------ contenedores
 
     /** @return array{ok: bool, mensaje: string, id?: int} */
-    public function guardarContenedor(string $numero, string $carpeta, ?string $rut = null): array
+    /** @param ?string $usuario quien lo carga; si el contenedor ya existía sin usuario, pasa a ser suyo */
+    public function guardarContenedor(string $numero, string $carpeta, ?string $rut = null, ?string $usuario = null): array
     {
         $numero = Validacion::normalizarContenedor($numero);
         $carpeta = Texto::limpiar($carpeta);
@@ -102,11 +103,11 @@ final class Contenedores
         $st->execute([$numero, $carpeta]);
         $id = $st->fetchColumn();
         if ($id !== false) {
-            $this->db->prepare('UPDATE contenedores SET cliente_id = ?, activo = 1 WHERE id = ?')->execute([$clienteId, $id]);
+            $this->db->prepare('UPDATE contenedores SET cliente_id = ?, activo = 1, usuario = COALESCE(usuario, ?) WHERE id = ?')->execute([$clienteId, $usuario, $id]);
             return ['ok' => true, 'mensaje' => "Contenedor $legible (carpeta $carpeta) actualizado$aviso", 'id' => (int) $id];
         }
-        $this->db->prepare('INSERT INTO contenedores (numero, carpeta, cliente_id, creado) VALUES (?, ?, ?, ?)')
-            ->execute([$numero, $carpeta, $clienteId, date('Y-m-d H:i:s')]);
+        $this->db->prepare('INSERT INTO contenedores (numero, carpeta, cliente_id, creado, usuario) VALUES (?, ?, ?, ?, ?)')
+            ->execute([$numero, $carpeta, $clienteId, date('Y-m-d H:i:s'), $usuario]);
         return ['ok' => true, 'mensaje' => "Contenedor $legible (carpeta $carpeta) agregado$aviso", 'id' => (int) $this->db->lastInsertId()];
     }
 
@@ -149,10 +150,10 @@ final class Contenedores
     }
 
     /** Formato: Contenedor ; Carpeta ; RUT (opcional). @return array{ok: int, errores: list<string>, avisos: list<string>} */
-    public function importarContenedores(string $texto): array
+    public function importarContenedores(string $texto, ?string $usuario = null): array
     {
         $filas = self::filasDeTexto($texto, fn($c) => !Validacion::formatoContenedor(Validacion::normalizarContenedor($c[0] ?? '')));
-        return $this->importar($filas, fn($c) => $this->guardarContenedor($c[0] ?? '', $c[1] ?? '', $c[2] ?? null));
+        return $this->importar($filas, fn($c) => $this->guardarContenedor($c[0] ?? '', $c[1] ?? '', $c[2] ?? null, $usuario));
     }
 
     private function importar(array $filas, callable $guardar): array
@@ -433,11 +434,14 @@ final class Contenedores
         return in_array(LuciaSoap::stockDeDetalle($detalle)['estado'] ?? null, ['en_stock', 'salio'], true);
     }
 
-    public function porEscala(): array
+    /** @param ?string $usuario solo los cargados por ese usuario; null = los de todos */
+    public function porEscala(?string $usuario = null): array
     {
-        $st = $this->db->query('SELECT c.*, cl.nombre AS cliente, cl.rut FROM contenedores c
+        $st = $this->db->prepare('SELECT c.*, cl.nombre AS cliente, cl.rut FROM contenedores c
             LEFT JOIN clientes cl ON cl.id = c.cliente_id
-            WHERE c.activo = 1 AND c.escala_id IS NOT NULL ORDER BY cl.nombre, c.carpeta, c.numero');
+            WHERE c.activo = 1 AND c.escala_id IS NOT NULL' . ($usuario !== null ? ' AND c.usuario = ?' : '') . '
+            ORDER BY cl.nombre, c.carpeta, c.numero');
+        $st->execute($usuario !== null ? [$usuario] : []);
         $res = [];
         foreach ($st->fetchAll() as $c) {
             $res[(int) $c['escala_id']][] = $c;
