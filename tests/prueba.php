@@ -512,6 +512,14 @@ $db6->exec('UPDATE contenedores SET escala_id = NULL');
 $db6->exec("INSERT INTO escalas (terminal, clave, buque, primera_vez, ultima_vez) VALUES ('TCP', 'k', 'B', '2026-10-01', '2026-10-01')");
 $db6->exec('UPDATE contenedores SET escala_id = ' . (int) $db6->lastInsertId());
 verificar(count($cont6->porEscala('beto')[1] ?? []) === 2 && count($cont6->porEscala()[1] ?? []) === 3, 'tablero: los contenedores de un usuario o los de todos');
+verificar($db6->query("SELECT tipo FROM contenedores WHERE numero = 'CSQU3054383'")->fetchColumn() === 'entero', 'una base anterior recibe la columna tipo; los existentes quedan como enteros');
+verificar(Contenedores::tipoDe('Apertura') === 'apertura' && Contenedores::tipoDe(' a ') === 'apertura' && Contenedores::tipoDe('ENTERO') === 'entero' && Contenedores::tipoDe('xx') === null, 'tipo: reconoce Entero / Apertura y abreviaturas');
+$r = $cont6->importarContenedores("Contenedor\tCarpeta\tRUT\tTipo\nMSCU1234565\t4\t\tApertura\nCSQU3054383\t1\t\t\nHAMU4640084\t5\t\tmedio\n", 'ana');
+$tipos = $db6->query('SELECT numero, tipo FROM contenedores ORDER BY numero')->fetchAll(PDO::FETCH_KEY_PAIR);
+verificar($r['ok'] === 2 && count($r['errores']) === 1 && $tipos['MSCU1234565'] === 'apertura' && $tipos['CSQU3054383'] === 'entero', 'importa el tipo desde Excel; sin tipo queda entero; un tipo desconocido se rechaza');
+$cont6->guardarContenedor('CSQU3054383', '1', null, 'ana', 'apertura');
+$cont6->importarContenedores("CSQU3054383\t1", 'ana');
+verificar($db6->query("SELECT tipo FROM contenedores WHERE numero = 'CSQU3054383'")->fetchColumn() === 'apertura', 'reimportar sin tipo no pisa una apertura');
 unset($db6, $cont6);
 @unlink($archivoViejo);
 

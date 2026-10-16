@@ -106,3 +106,12 @@ form.login p { margin: 0; }
 
 .selector-ver { font-size: 13px; white-space: nowrap; }
 .selector-ver strong, .selector-ver a { margin-left: 4px; }
+.tipo { display: inline-block; font-size: 11px; font-weight: 600; padding: 0 6px; border-radius: 8px; border: 1px solid var(--borde); color: var(--suave); }
+.tipo-apertura { background: #e8eefc; border-color: #b9c8f0; color: #2a4a9a; }
+@media (prefers-color-scheme: dark) {
+    .tipo-apertura { background: #1e2a4a; border-color: #34477a; color: #b9c8f0; }
+}
+.formulario fieldset.opciones-tipo { border: 0; padding: 0; margin: 0; display: flex; gap: 14px; align-items: center; font-size: 13px; }
+.formulario fieldset.opciones-tipo legend { float: left; padding: 0; }
+.formulario fieldset.opciones-tipo label { flex-direction: row; align-items: center; width: auto; }
+.formulario fieldset.opciones-tipo input { width: auto; margin: 0; }

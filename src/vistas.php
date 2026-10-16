@@ -108,6 +108,12 @@ function selectorVerContenedores(?string $filtro): string
     return $html . '</span>';
 }
 
+function etiquetaTipo(array $c): string
+{
+    $tipo = ($c['tipo'] ?? 'entero') === 'apertura' ? 'apertura' : 'entero';
+    return '<span class="tipo tipo-' . $tipo . '">' . e(Contenedores::TIPOS[$tipo]) . '</span>';
+}
+
 function esCampoFecha(string $campo): bool
 {
     return in_array($campo, ['eta', 'etb', 'etd', 'cierre'], true);

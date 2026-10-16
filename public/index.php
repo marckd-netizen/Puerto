@@ -208,7 +208,7 @@ encabezado('Arribos Montevideo', (int) ($cfg['auto_refresh'] ?? 300));
                         <summary>📦 <?= count($f['contenedores']) ?> contenedor<?= count($f['contenedores']) > 1 ? 'es' : '' ?><?= $enStock ? " · $enStock en stock" : '' ?><?= $clientesFila ? ' · ' . e(implode(', ', array_slice($clientesFila, 0, 2))) . (count($clientesFila) > 2 ? ' y ' . (count($clientesFila) - 2) . ' más' : '') : '' ?></summary>
                         <ul>
                             <?php foreach ($f['contenedores'] as $c): ?>
-                                <li><strong><?= e(Validacion::formatearContenedor($c['numero'])) ?></strong> · Carpeta <?= e($c['carpeta']) ?><?= $c['cliente'] ? ' · ' . e($c['cliente']) : '' ?><?= $verDe === null && $c['usuario'] ? ' · <small>' . e($c['usuario']) . '</small>' : '' ?> <?= etiquetaStock($c, $cfg) ?></li>
+                                <li><strong><?= e(Validacion::formatearContenedor($c['numero'])) ?></strong> <?= etiquetaTipo($c) ?> · Carpeta <?= e($c['carpeta']) ?><?= $c['cliente'] ? ' · ' . e($c['cliente']) : '' ?><?= $verDe === null && $c['usuario'] ? ' · <small>' . e($c['usuario']) . '</small>' : '' ?> <?= etiquetaStock($c, $cfg) ?></li>
                             <?php endforeach; ?>
                         </ul>
                     </details>

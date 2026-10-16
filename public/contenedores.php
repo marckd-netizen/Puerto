@@ -24,11 +24,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $id = (int) ($_POST['id'] ?? 0);
     switch ($_POST['accion'] ?? '') {
         case 'guardar':
-            $r = $servicio->guardarContenedor((string) $_POST['numero'], (string) $_POST['carpeta'], (string) ($_POST['rut'] ?? ''), Acceso::usuario());
+            $r = $servicio->guardarContenedor((string) $_POST['numero'], (string) $_POST['carpeta'], (string) ($_POST['rut'] ?? ''), Acceso::usuario(),
+                Contenedores::tipoDe((string) ($_POST['tipo'] ?? '')) ?? 'entero');
             avisar($r['ok'] ? (str_contains($r['mensaje'], 'atención') ? 'atencion' : 'ok') : 'error', $r['mensaje']);
             break;
         case 'importar':
             avisarImportacion($servicio->importarContenedores((string) $_POST['texto'], Acceso::usuario()), 'Contenedores');
+            break;
+        case 'tipo':
+            if ($tipo = Contenedores::tipoDe((string) ($_POST['tipo'] ?? ''))) {
+                $db->prepare('UPDATE contenedores SET tipo = ? WHERE id = ?')->execute([$tipo, $id]);
+            }
             break;
         case 'asignarme':
             if (Acceso::usuario() !== null) {
@@ -62,6 +68,7 @@ $fBuscar = trim((string) ($_GET['q'] ?? ''));
 $fEstado = (string) ($_GET['estado'] ?? '');
 $fCliente = (int) ($_GET['cliente'] ?? 0);
 $fArchivados = !empty($_GET['archivados']);
+$fTipo = Contenedores::tipoDe((string) ($_GET['tipo'] ?? ''));
 
 $where = [$fArchivados ? 'c.activo = 0' : 'c.activo = 1'];
 $params = [];
@@ -79,6 +86,10 @@ if ($fEstado === 'vinculado') {
 if ($fCliente) {
     $where[] = 'c.cliente_id = ?';
     $params[] = $fCliente;
+}
+if ($fTipo !== null) {
+    $where[] = 'c.tipo = ?';
+    $params[] = $fTipo;
 }
 if ($verDe !== null) {
     $where[] = 'c.usuario = ?';
@@ -121,6 +132,12 @@ mostrarAvisos();
             <input type="hidden" name="accion" value="guardar">
             <label>Contenedor <input name="numero" required pattern="\s*[A-Za-z]{4}\s*-?\s*\d{6}\s*-?\s*\d\s*" placeholder="AAAA-123456-7" style="text-transform:uppercase"></label>
             <label>Carpeta <input name="carpeta" required></label>
+            <fieldset class="opciones-tipo">
+                <legend>Tipo</legend>
+                <?php foreach (Contenedores::TIPOS as $valor => $texto): ?>
+                    <label><input type="radio" name="tipo" value="<?= e($valor) ?>" <?= $valor === 'entero' ? 'checked' : '' ?>> <?= e($texto) ?></label>
+                <?php endforeach; ?>
+            </fieldset>
             <label>Cliente
                 <select name="rut">
                     <option value="">(sin cliente)</option>
@@ -137,9 +154,9 @@ mostrarAvisos();
         <form method="post" class="formulario">
             <?= Acceso::campoToken() ?>
             <input type="hidden" name="accion" value="importar">
-            <label><span>Pegá desde Excel: <b>Contenedor</b>, <b>Carpeta</b> y, opcional, <b>RUT del cliente</b>.
-                El cliente tiene que estar cargado antes.</span>
-                <textarea name="texto" rows="5" required placeholder="MSKU-123456-5	2026-0153	211234560012"></textarea>
+            <label><span>Pegá desde Excel: <b>Contenedor</b>, <b>Carpeta</b> y, opcionales, <b>RUT del cliente</b>
+                y <b>Tipo</b> (Entero o Apertura; si no se indica, Entero). El cliente tiene que estar cargado antes.</span>
+                <textarea name="texto" rows="5" required placeholder="MSKU-123456-5	2026-0153	211234560012	Apertura"></textarea>
             </label>
             <button type="submit">Importar</button>
         </form>
@@ -153,6 +170,12 @@ mostrarAvisos();
         <option value="vinculado" <?= $fEstado === 'vinculado' ? 'selected' : '' ?>>Vinculados a un buque</option>
         <?php foreach (ESTADOS_LUCIA as $k => $v): ?>
             <option value="<?= e($k) ?>" <?= $fEstado === $k ? 'selected' : '' ?>><?= e($v) ?></option>
+        <?php endforeach; ?>
+    </select>
+    <select name="tipo" onchange="this.form.submit()">
+        <option value="">Enteros y aperturas</option>
+        <?php foreach (Contenedores::TIPOS as $valor => $texto): ?>
+            <option value="<?= e($valor) ?>" <?= $fTipo === $valor ? 'selected' : '' ?>><?= e($texto === 'Entero' ? 'Solo enteros' : 'Solo aperturas') ?></option>
         <?php endforeach; ?>
     </select>
     <select name="cliente" onchange="this.form.submit()">
@@ -179,6 +202,7 @@ mostrarAvisos();
             <td class="buque numero">
                 <?= e(Validacion::formatearContenedor($c['numero'])) ?>
                 <?php if (!Validacion::digitoContenedorCorrecto($c['numero'])): ?><span class="advertencia" title="El dígito verificador no coincide: revisá el número">⚠</span><?php endif; ?>
+                <div><?= etiquetaTipo($c) ?></div>
             </td>
             <td><?= e($c['carpeta']) ?><?php if ($verDe === null && $c['usuario']): ?><div><small>Cargado por <?= e($c['usuario']) ?></small></div><?php endif; ?></td>
             <td><?= e($c['cliente']) ?: '<span class="sin-dato">—</span>' ?></td>
@@ -207,6 +231,8 @@ mostrarAvisos();
             <td class="acciones">
                 <?php if ($c['activo']): ?>
                     <form method="post"><?= Acceso::campoToken() ?><input type="hidden" name="accion" value="consultar"><input type="hidden" name="id" value="<?= (int) $c['id'] ?>"><button type="submit" class="enlace">Consultar ahora</button></form>
+                    <?php $otroTipo = ($c['tipo'] ?? 'entero') === 'apertura' ? 'entero' : 'apertura'; ?>
+                    <form method="post"><?= Acceso::campoToken() ?><input type="hidden" name="accion" value="tipo"><input type="hidden" name="tipo" value="<?= $otroTipo ?>"><input type="hidden" name="id" value="<?= (int) $c['id'] ?>"><button type="submit" class="enlace">Pasar a <?= e(mb_strtolower(Contenedores::TIPOS[$otroTipo])) ?></button></form>
                     <form method="post"><?= Acceso::campoToken() ?><input type="hidden" name="accion" value="archivar"><input type="hidden" name="id" value="<?= (int) $c['id'] ?>"><button type="submit" class="enlace">Archivar</button></form>
                 <?php else: ?>
                     <form method="post"><?= Acceso::campoToken() ?><input type="hidden" name="accion" value="reactivar"><input type="hidden" name="id" value="<?= (int) $c['id'] ?>"><button type="submit" class="enlace">Reactivar</button></form>

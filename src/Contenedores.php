@@ -77,8 +77,26 @@ final class Contenedores
     // ------------------------------------------------------------ contenedores
 
     /** @return array{ok: bool, mensaje: string, id?: int} */
-    /** @param ?string $usuario quien lo carga; si el contenedor ya existía sin usuario, pasa a ser suyo */
-    public function guardarContenedor(string $numero, string $carpeta, ?string $rut = null, ?string $usuario = null): array
+    /** Contenedor entero o apertura: se siguen distinto. */
+    public const TIPOS = ['entero' => 'Entero', 'apertura' => 'Apertura'];
+
+    /** "entero" / "apertura" a partir de lo que se escriba (Entero, E, FCL, Apertura, A, ...); null si no se reconoce. */
+    public static function tipoDe(?string $texto): ?string
+    {
+        $t = Texto::normalizar((string) $texto);
+        return match (true) {
+            $t === '' => null,
+            in_array($t, ['e', 'ent', 'entero', 'completo', 'fcl'], true) => 'entero',
+            in_array($t, ['a', 'ap', 'apert', 'apertura', 'lcl'], true) => 'apertura',
+            default => null,
+        };
+    }
+
+    /**
+     * @param ?string $usuario quien lo carga; si el contenedor ya existía sin usuario, pasa a ser suyo
+     * @param ?string $tipo "entero" o "apertura"; null = entero si es nuevo, sin cambios si ya existía
+     */
+    public function guardarContenedor(string $numero, string $carpeta, ?string $rut = null, ?string $usuario = null, ?string $tipo = null): array
     {
         $numero = Validacion::normalizarContenedor($numero);
         $carpeta = Texto::limpiar($carpeta);
@@ -95,6 +113,9 @@ final class Contenedores
                 return ['ok' => false, 'mensaje' => "No existe un cliente con RUT " . Validacion::normalizarRut($rut) . " (contenedor " . Validacion::formatearContenedor($numero) . ")"];
             }
         }
+        if ($tipo !== null && !isset(self::TIPOS[$tipo])) {
+            return ['ok' => false, 'mensaje' => "Tipo desconocido para " . Validacion::formatearContenedor($numero) . ": tiene que ser Entero o Apertura"];
+        }
         $aviso = Validacion::digitoContenedorCorrecto($numero)
             ? '' : ' (atención: el dígito verificador no coincide, revisá el número)';
         $legible = Validacion::formatearContenedor($numero);
@@ -103,11 +124,12 @@ final class Contenedores
         $st->execute([$numero, $carpeta]);
         $id = $st->fetchColumn();
         if ($id !== false) {
-            $this->db->prepare('UPDATE contenedores SET cliente_id = ?, activo = 1, usuario = COALESCE(usuario, ?) WHERE id = ?')->execute([$clienteId, $usuario, $id]);
+            $this->db->prepare('UPDATE contenedores SET cliente_id = ?, activo = 1, usuario = COALESCE(usuario, ?), tipo = COALESCE(?, tipo) WHERE id = ?')
+                ->execute([$clienteId, $usuario, $tipo, $id]);
             return ['ok' => true, 'mensaje' => "Contenedor $legible (carpeta $carpeta) actualizado$aviso", 'id' => (int) $id];
         }
-        $this->db->prepare('INSERT INTO contenedores (numero, carpeta, cliente_id, creado, usuario) VALUES (?, ?, ?, ?, ?)')
-            ->execute([$numero, $carpeta, $clienteId, date('Y-m-d H:i:s'), $usuario]);
+        $this->db->prepare('INSERT INTO contenedores (numero, carpeta, cliente_id, creado, usuario, tipo) VALUES (?, ?, ?, ?, ?, ?)')
+            ->execute([$numero, $carpeta, $clienteId, date('Y-m-d H:i:s'), $usuario, $tipo ?? 'entero']);
         return ['ok' => true, 'mensaje' => "Contenedor $legible (carpeta $carpeta) agregado$aviso", 'id' => (int) $this->db->lastInsertId()];
     }
 
@@ -153,7 +175,14 @@ final class Contenedores
     public function importarContenedores(string $texto, ?string $usuario = null): array
     {
         $filas = self::filasDeTexto($texto, fn($c) => !Validacion::formatoContenedor(Validacion::normalizarContenedor($c[0] ?? '')));
-        return $this->importar($filas, fn($c) => $this->guardarContenedor($c[0] ?? '', $c[1] ?? '', $c[2] ?? null, $usuario));
+        return $this->importar($filas, function ($c) use ($usuario) {
+            // Columnas: Contenedor, Carpeta, RUT (opcional), Tipo (opcional: Entero / Apertura)
+            $tipo = trim($c[3] ?? '');
+            if ($tipo !== '' && self::tipoDe($tipo) === null) {
+                return ['ok' => false, 'mensaje' => 'Tipo "' . $tipo . '" desconocido para ' . Validacion::formatearContenedor(Validacion::normalizarContenedor($c[0] ?? '')) . ': tiene que ser Entero o Apertura'];
+            }
+            return $this->guardarContenedor($c[0] ?? '', $c[1] ?? '', $c[2] ?? null, $usuario, self::tipoDe($tipo));
+        });
     }
 
     private function importar(array $filas, callable $guardar): array

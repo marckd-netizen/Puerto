@@ -66,6 +66,7 @@ CREATE TABLE IF NOT EXISTS contenedores (
     escala_id       INTEGER NULL REFERENCES escalas (id) ON DELETE SET NULL,
     vinculado       DATETIME     NULL,
     usuario         VARCHAR(40)  NULL,
+    tipo            VARCHAR(10)  NOT NULL DEFAULT 'entero',
     UNIQUE (numero, carpeta)
 );
 
