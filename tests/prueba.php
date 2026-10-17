@@ -523,6 +523,56 @@ verificar($db6->query("SELECT tipo FROM contenedores WHERE numero = 'CSQU3054383
 unset($db6, $cont6);
 @unlink($archivoViejo);
 
+echo "Tracking de navieras (DCSA)\n";
+$dcsa = file_get_contents(__DIR__ . '/fixtures/naviera_dcsa_supuesta.json');
+$nav = Navieras::interpretarDcsa('MAERSK', $dcsa);
+verificar($nav->buque === 'SAN CHRISTOBAL' && $nav->viaje === '642S', 'buque y viaje de la llegada a Montevideo (el feeder, no el buque de origen)');
+verificar($nav->fecha === '2026-10-21 10:00' && $nav->tipoFecha === 'EST', 'llegada: la estimada más reciente gana a la planificada, en hora de Uruguay');
+verificar(str_contains(implode(' ', $nav->resumen), 'Tracking MAERSK: SAN CHRISTOBAL viaje 642S · llegada estimada 21/10 10:00'), 'resumen para mostrar');
+$soloArray = json_encode(json_decode($dcsa, true)['events']);
+verificar(Navieras::interpretarDcsa('HAPAG', $soloArray)->buque === 'SAN CHRISTOBAL', 'acepta la lista de eventos sin "events" (DCSA estándar)');
+$sinMvd = Navieras::interpretarDcsa('MAERSK', json_encode(['events' => array_slice(json_decode($dcsa, true)['events'], 0, 2)]));
+verificar($sinMvd->buque === null && str_contains($sinMvd->resumen[0], 'todavía sin llegada a UYMVD'), 'sin llegada a Montevideo: sin buque, con el último evento');
+verificar(Navieras::interpretarDcsa('MAERSK', '{"events": []}') === null, 'sin eventos: la naviera no conoce el contenedor');
+$navCfg = ['lineas' => [
+    'MAERSK' => ['activa' => true, 'prefijos' => ['MSKU'], 'url' => 'http://x/{contenedor}'],
+    'HAPAG' => ['activa' => true, 'prefijos' => ['HLXU'], 'url' => 'http://y/{contenedor}'],
+    'CMA CGM' => ['activa' => false, 'prefijos' => ['CMAU'], 'url' => 'http://z/{contenedor}'],
+]];
+verificar(array_keys((new Navieras($navCfg))->lineasPara('MSKU9070323')) === ['MAERSK'], 'por el prefijo se consulta solo la naviera dueña');
+verificar((new Navieras($navCfg))->lineasPara('TGHU8785330') === [] && array_keys((new Navieras($navCfg + ['probar_todas' => true]))->lineasPara('TGHU8785330')) === ['MAERSK', 'HAPAG'], 'leasing: ninguna, o todas las activas con probar_todas');
+verificar(Navieras::crear(['lineas' => ['X' => ['activa' => false, 'url' => 'u']]]) === null, 'sin navieras activas no se consulta nada');
+
+// De punta a punta: Lucía todavía no lo tiene → tracking → escala del tablero
+$db7 = Db::conectar(['driver' => 'sqlite', 'sqlite_path' => ':memory:']);
+$insE = $db7->prepare("INSERT INTO escalas (terminal, clave, buque, viaje, eta, etd, primera_vez, ultima_vez, activa) VALUES (?, ?, ?, ?, ?, ?, '2026-10-01', '2026-10-01', 1)");
+$insE->execute(['TCP', 'v1', 'SAN CHRISTOBAL', 'Sem. 39', '2026-09-25 08:00', '2026-09-26 08:00']);
+$insE->execute(['TCP', 'v2', 'SAN CHRISTOBAL', 'Sem. 43', '2026-10-21 09:00', '2026-10-22 08:00']);
+$idSan = (int) $db7->lastInsertId();
+$cont7 = new Contenedores($db7);
+$cont7->guardarContenedor('MSKU9070323', 'N1');
+$navFija = new class ($dcsa) implements ConsultaNaviera {
+    public int $llamadas = 0;
+    public function __construct(private string $json) {}
+    public function consultar(string $c): ?ResultadoNaviera { $this->llamadas++; return Navieras::interpretarDcsa('MAERSK', $this->json); }
+};
+$cont7->usarNavieras($navFija);
+$luciaVacia = new class implements ConsultaLucia {
+    public function consultar(string $c): ResultadoLucia { return new ResultadoLucia(false); }
+};
+$r = $cont7->consultarPendientes($luciaVacia, ['pausa_segundos' => 0], strtotime('2026-10-17 10:00'));
+$f7 = $db7->query("SELECT * FROM contenedores WHERE numero = 'MSKU9070323'")->fetch();
+verificar((int) $f7['escala_id'] === $idSan && $f7['lucia_estado'] === 'no_encontrado' && $r['vinculados'] === 1, 'sin datos en Lucía, se vincula al buque que da el tracking (la escala de la fecha de llegada)');
+verificar(str_contains($f7['lucia_mensaje'], 'tracking de MAERSK') && str_contains(implode(' ', json_decode($f7['lucia_detalle'], true)['resumen']), 'SAN CHRISTOBAL'), 'se aclara que el buque sale del tracking');
+$navFalla = new class implements ConsultaNaviera {
+    public function consultar(string $c): ?ResultadoNaviera { throw new RuntimeException('HTTP 401'); }
+};
+$cont7->usarNavieras($navFalla);
+$db7->exec('UPDATE contenedores SET lucia_consulta = NULL');
+$r = $cont7->consultarPendientes($luciaVacia, ['pausa_segundos' => 0], strtotime('2026-10-17 10:00'));
+$f7 = $db7->query("SELECT * FROM contenedores WHERE numero = 'MSKU9070323'")->fetch();
+verificar($r['errores'] === [] && str_contains((string) $f7['lucia_mensaje'], 'HTTP 401') && (int) $f7['escala_id'] === $idSan, 'si falla el tracking se avisa, sin perder el vínculo anterior');
+
 echo "Zona horaria de una terminal\n";
 verificar(Texto::desdeZona('2026-10-07 10:37', 'UTC') === '2026-10-07 07:37', 'UTC → hora de Uruguay (−3)');
 verificar(Texto::desdeZona('2026-10-08 01:00', 'UTC') === '2026-10-07 22:00', 'cruza el cambio de día');

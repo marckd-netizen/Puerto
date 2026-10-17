@@ -86,6 +86,14 @@ En la página se aclara de dónde salió el buque ("según manifiesto 291201" o 
 Además, cada contenedor muestra un resumen: buque, llegada, agencia y conocimiento según el manifiesto; descarga, origen y destino, manifiesto y liberación, DUA,
 mensajes simplificados, tránsito e incautaciones.
 
+**Tracking de las navieras:** cuando Lucía todavía no conoce el contenedor (por ejemplo, mientras navega), o lo conoce
+pero no se pudo saber el buque, se consulta el tracking de la naviera y se toma el buque con el que llega a Montevideo
+(evento de llegada, `ARRI`, en `UYMVD`: la real si la hay, si no la estimada más reciente, si no la planificada).
+Ese buque se vincula a la escala del tablero igual que el de Lucía. Usa las APIs oficiales con el estándar
+**DCSA Track & Trace** (Maersk, Hapag-Lloyd, CMA CGM, ...): cada naviera da la clave al registrarse en su portal de
+desarrolladores. Se configura en `config.php → navieras` (activa, url, encabezado con la clave y prefijos de sus
+contenedores) y se prueba con `php cron/naviera_diagnostico.php CONTENEDOR`. MSC no tiene una API pública de este tipo.
+
 **Contenedores de cada usuario:** cada contenedor guarda quién lo cargó. En el tablero y en la página Contenedores se elige
 "Contenedores: Míos / De todos" (se recuerda para la próxima vez). Los clientes son compartidos por todos.
 Los contenedores cargados antes de esta opción no tienen usuario: la página Contenedores ofrece pasarlos a tu nombre.

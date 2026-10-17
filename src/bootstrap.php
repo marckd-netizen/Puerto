@@ -49,6 +49,7 @@ require_once __DIR__ . '/Validacion.php';
 require_once __DIR__ . '/Lucia.php';
 require_once __DIR__ . '/LuciaSoap.php';
 require_once __DIR__ . '/LuciaManifiesto.php';
+require_once __DIR__ . '/Navieras.php';
 require_once __DIR__ . '/Contenedores.php';
 require_once __DIR__ . '/Usuarios.php';
 require_once __DIR__ . '/Acceso.php';

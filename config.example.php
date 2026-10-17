@@ -154,6 +154,36 @@ return [
         ],
     ],
 
+    // Tracking de las navieras (APIs oficiales con el estándar DCSA Track & Trace): dice en qué buque
+    // llega un contenedor a Montevideo cuando Lucía todavía no lo sabe (por ejemplo, mientras navega).
+    // Cada naviera da la clave de su API al registrarse en su portal de desarrolladores (gratis);
+    // la dirección y el nombre del encabezado de la clave figuran en ese portal.
+    // Probar con: php cron/naviera_diagnostico.php MSKU1234565
+    'navieras' => [
+        'puerto' => 'UYMVD',          // código UN/LOCODE de Montevideo
+        'probar_todas' => false,      // true: los contenedores de leasing (TGHU, TCNU, ...) se buscan en todas las activas
+        'lineas' => [
+            'MAERSK' => [             // https://developer.maersk.com
+                'activa'      => false,
+                'prefijos'    => ['MAEU', 'MSKU', 'MRKU', 'MRSU', 'MSAU', 'SUDU', 'SEAU'],
+                'url'         => 'https://api.maersk.com/track-and-trace-private/events?equipmentReference={contenedor}',
+                'encabezados' => ['Consumer-Key: PEGAR-AQUI-LA-CLAVE'],
+            ],
+            'HAPAG' => [              // https://api-portal.hlag.com
+                'activa'      => false,
+                'prefijos'    => ['HLXU', 'HLBU', 'HLCU', 'HAMU', 'UACU'],
+                'url'         => '',  // la de "Track & Trace" del portal, terminada en ?equipmentReference={contenedor}
+                'encabezados' => [],  // por ejemplo 'X-IBM-Client-Id: ...', según indique el portal
+            ],
+            'CMA CGM' => [            // https://api-portal.cma-cgm.com
+                'activa'      => false,
+                'prefijos'    => ['CMAU', 'CGMU', 'ECMU', 'APHU', 'APZU'],
+                'url'         => '',
+                'encabezados' => [],
+            ],
+        ],
+    ],
+
     // Campos cuyo cambio se registra y se destaca.
     'campos_vigilados' => ['eta', 'etd', 'estado', 'servicio'],
 

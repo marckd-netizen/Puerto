@@ -1,0 +1,22 @@
+{"events": [
+  {"eventType": "EQUIPMENT", "eventClassifierCode": "ACT", "eventDateTime": "2026-09-20T14:00:00+08:00", "eventCreatedDateTime": "2026-09-20T14:05:00Z",
+   "equipmentEventTypeCode": "LOAD", "equipmentReference": "MSKU9070323", "emptyIndicatorCode": "LADEN",
+   "transportCall": {"transportCallID": "a1", "exportVoyageNumber": "238W", "UNLocationCode": "CNSHA", "modeOfTransport": "VESSEL",
+                     "vessel": {"vesselIMONumber": "9632179", "vesselName": "MAERSK ESSEN"}}},
+  {"eventType": "TRANSPORT", "eventClassifierCode": "ACT", "eventDateTime": "2026-10-12T06:00:00-03:00", "eventCreatedDateTime": "2026-10-12T09:10:00Z",
+   "transportEventTypeCode": "ARRI",
+   "transportCall": {"transportCallID": "a2", "importVoyageNumber": "238W", "UNLocationCode": "BRSSZ", "modeOfTransport": "VESSEL",
+                     "vessel": {"vesselIMONumber": "9632179", "vesselName": "MAERSK ESSEN"}}},
+  {"eventType": "TRANSPORT", "eventClassifierCode": "PLN", "eventDateTime": "2026-10-20T08:00:00-03:00", "eventCreatedDateTime": "2026-10-01T10:00:00Z",
+   "transportEventTypeCode": "ARRI",
+   "transportCall": {"transportCallID": "a3", "importVoyageNumber": "642S", "UNLocationCode": "UYMVD", "modeOfTransport": "VESSEL",
+                     "vessel": {"vesselIMONumber": "9613018", "vesselName": "SAN CHRISTOBAL"}}},
+  {"eventType": "TRANSPORT", "eventClassifierCode": "EST", "eventDateTime": "2026-10-21T13:00:00Z", "eventCreatedDateTime": "2026-10-15T10:00:00Z",
+   "transportEventTypeCode": "ARRI",
+   "transportCall": {"transportCallID": "a3", "importVoyageNumber": "642S", "UNLocationCode": "UYMVD", "modeOfTransport": "VESSEL",
+                     "vessel": {"vesselIMONumber": "9613018", "vesselName": "SAN CHRISTOBAL"}}},
+  {"eventType": "TRANSPORT", "eventClassifierCode": "EST", "eventDateTime": "2026-10-23T09:00:00-03:00", "eventCreatedDateTime": "2026-10-15T10:00:00Z",
+   "transportEventTypeCode": "DEPA",
+   "transportCall": {"transportCallID": "a3", "exportVoyageNumber": "642S", "UNLocationCode": "UYMVD", "modeOfTransport": "VESSEL",
+                     "vessel": {"vesselIMONumber": "9613018", "vesselName": "SAN CHRISTOBAL"}}}
+]}

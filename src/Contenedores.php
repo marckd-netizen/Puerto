@@ -6,9 +6,30 @@ final class Contenedores
 {
     private ?BuscadorManifiesto $manifiestos = null;
     private int $reconsultarHoras = 2;
+    private ?ConsultaNaviera $navieras = null;
 
     public function __construct(private PDO $db)
     {
+    }
+
+    /** Activa el tracking de las navieras, para conocer el buque cuando Lucía todavía no lo sabe. */
+    public function usarNavieras(?ConsultaNaviera $navieras): void
+    {
+        $this->navieras = $navieras;
+    }
+
+    /** @return array{0: ?ResultadoNaviera, 1: ?string} resultado (solo si trae buque) y aviso de error */
+    private function trackingNaviera(string $numero): array
+    {
+        if ($this->navieras === null) {
+            return [null, null];
+        }
+        try {
+            $r = $this->navieras->consultar($numero);
+        } catch (Throwable $t) {
+            return [null, 'No se pudo consultar el tracking de la naviera: ' . $t->getMessage()];
+        }
+        return [$r, null];
     }
 
     /** Activa la consulta del buque por número de manifiesto (Lucía no lo informa en los datos del contenedor). */
@@ -297,9 +318,27 @@ final class Contenedores
         }
 
         if (!$r->encontrado) {
-            $this->db->prepare("UPDATE contenedores SET lucia_estado = 'no_encontrado', lucia_consulta = ?, lucia_mensaje = NULL WHERE id = ?")
-                ->execute([$cuando, $c['id']]);
-            return false;
+            // Lucía todavía no lo conoce (por ejemplo, viene navegando): el tracking de la naviera dice en qué buque llega.
+            [$nav, $avisoNav] = $this->trackingNaviera($c['numero']);
+            if ($nav === null || $nav->buque === null) {
+                $this->db->prepare("UPDATE contenedores SET lucia_estado = 'no_encontrado', lucia_consulta = ?, lucia_mensaje = ?, lucia_detalle = ? WHERE id = ?")
+                    ->execute([$cuando, $avisoNav ? mb_substr($avisoNav, 0, 255) : null, $nav ? json_encode(['resumen' => $nav->resumen], JSON_UNESCAPED_UNICODE) : null, $c['id']]);
+                return false;
+            }
+            $escalaId = $this->buscarEscala($nav->buque, $nav->viaje, $nav->fecha, $ahora);
+            $mismaEscala = $escalaId !== null && $c['escala_id'] !== null && (int) $c['escala_id'] === $escalaId;
+            $this->db->prepare("UPDATE contenedores SET lucia_estado = 'no_encontrado', lucia_consulta = ?, lucia_buque = ?, lucia_viaje = ?,
+                    lucia_fecha = ?, lucia_mensaje = ?, lucia_detalle = ?, escala_id = ?, vinculado = ? WHERE id = ?")
+                ->execute([
+                    $cuando, $nav->buque, $nav->viaje, $nav->fecha,
+                    mb_substr("Todavía no figura en Lucía; buque según el tracking de {$nav->naviera}"
+                        . ($escalaId === null ? " ({$nav->buque}, que no figura en el tablero)" : ''), 0, 255),
+                    json_encode(['resumen' => $nav->resumen, 'naviera' => $nav->naviera], JSON_UNESCAPED_UNICODE),
+                    $escalaId,
+                    $escalaId === null ? null : ($mismaEscala ? $c['vinculado'] : $cuando),
+                    $c['id'],
+                ]);
+            return $escalaId;
         }
 
         // 1) Buque informado por Lucía; 2) si no, el del manifiesto; 3) si no, terminal + fecha de descarga.
@@ -335,6 +374,19 @@ final class Contenedores
             }
         }
 
+        // Sin buque por Lucía ni por manifiesto: el tracking de la naviera, antes de deducirlo por terminal y fecha.
+        $navieraUsada = null;
+        if ($buque === null) {
+            [$nav, $avisoNav] = $this->trackingNaviera($c['numero']);
+            if ($nav !== null) {
+                array_push($detalle['resumen'], ...$nav->resumen);
+                if ($nav->buque !== null) {
+                    [$buque, $viaje, $fecha, $navieraUsada] = [$nav->buque, $nav->viaje, $nav->fecha ?? $fecha, $nav->naviera];
+                }
+            }
+            $avisoManifiesto = trim(($avisoManifiesto ?? '') . ' ' . ($avisoNav ?? '')) ?: null;
+        }
+
         $escalaId = $this->buscarEscala($buque, $viaje, $fecha, $ahora);
         $porTerminal = false;
         if ($escalaId === null && $r->terminal !== null && $r->fecha !== null) {
@@ -342,7 +394,11 @@ final class Contenedores
             $porTerminal = $escalaId !== null;
         }
         $mismaEscala = $escalaId !== null && $c['escala_id'] !== null && (int) $c['escala_id'] === $escalaId;
-        $segunManifiesto = $manifiestoUsado !== null ? " (según manifiesto $manifiestoUsado)" : '';
+        $segunManifiesto = match (true) {
+            $manifiestoUsado !== null => " (según manifiesto $manifiestoUsado)",
+            $navieraUsada !== null => " (según el tracking de $navieraUsada)",
+            default => '',
+        };
         $this->db->prepare("UPDATE contenedores SET lucia_estado = ?, lucia_consulta = ?, lucia_buque = ?, lucia_viaje = ?,
                 lucia_fecha = ?, lucia_mensaje = ?, lucia_detalle = ?, escala_id = ?, vinculado = ? WHERE id = ?")
             ->execute([
