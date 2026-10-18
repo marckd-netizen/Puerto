@@ -193,6 +193,19 @@ return [
                 'url'         => '',
                 'encabezados' => [],
             ],
+            'EVERGREEN' => [          // Evergreen Line (miembro de DCSA; en Uruguay, Evergreen Shipping Agency)
+                'activa'      => false,
+                'prefijos'    => ['EGHU', 'EISU', 'EMCU', 'EGSU'],
+                'url'         => '',
+                'encabezados' => [],
+            ],
+            'PIL' => [                // Pacific International Lines: no es miembro de DCSA; con una respuesta real se adapta el lector
+                'activa'      => false,
+                'formato'     => 'pil',
+                'prefijos'    => ['PCIU'],
+                'url'         => '',
+                'encabezados' => [],
+            ],
             'COSCO' => [              // COSCO no usa el estándar DCSA: con una respuesta real se adapta el lector
                 'activa'      => false,
                 'formato'     => 'cosco',
