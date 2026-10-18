@@ -181,6 +181,25 @@ return [
                 'url'         => '',
                 'encabezados' => [],
             ],
+            'ONE' => [                // Ocean Network Express (miembro de DCSA): pedir acceso a su API de tracking
+                'activa'      => false,
+                'prefijos'    => ['ONEU', 'NYKU', 'MOLU', 'KKFU'],
+                'url'         => '',
+                'encabezados' => [],
+            ],
+            'MSC' => [                // https://developerportal.msc.com (API DCSA; se pide "Direct Integration", puede tener costo)
+                'activa'      => false,
+                'prefijos'    => ['MSCU', 'MEDU', 'MSDU', 'MSMU'],
+                'url'         => '',
+                'encabezados' => [],
+            ],
+            'COSCO' => [              // COSCO no usa el estándar DCSA: con una respuesta real se adapta el lector
+                'activa'      => false,
+                'formato'     => 'cosco',
+                'prefijos'    => ['CCLU', 'CBHU', 'CSNU', 'CSLU'],
+                'url'         => '',
+                'encabezados' => [],
+            ],
         ],
     ],
 

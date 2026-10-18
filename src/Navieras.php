@@ -117,6 +117,10 @@ final class Navieras implements ConsultaNaviera
         if ($r['codigo'] < 200 || $r['codigo'] >= 300) {
             throw new RuntimeException("respondió HTTP {$r['codigo']}" . ($r['codigo'] === 401 || $r['codigo'] === 403 ? ' (revisá la clave de la API en config.php)' : ''));
         }
+        $formato = $linea['formato'] ?? 'dcsa';
+        if ($formato !== 'dcsa') {
+            throw new RuntimeException("el formato \"$formato\" todavía no se sabe leer: mandá la respuesta de cron/naviera_diagnostico.php para adaptarlo");
+        }
         return self::interpretarDcsa($codigo, $r['cuerpo'], $this->cfg['puerto'] ?? 'UYMVD');
     }
 

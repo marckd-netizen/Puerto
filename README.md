@@ -92,7 +92,9 @@ pero no se pudo saber el buque, se consulta el tracking de la naviera y se toma 
 Ese buque se vincula a la escala del tablero igual que el de Lucía. Usa las APIs oficiales con el estándar
 **DCSA Track & Trace** (Maersk, Hapag-Lloyd, CMA CGM, ...): cada naviera da la clave al registrarse en su portal de
 desarrolladores. Se configura en `config.php → navieras` (activa, url, encabezado con la clave y prefijos de sus
-contenedores) y se prueba con `php cron/naviera_diagnostico.php CONTENEDOR`. MSC no tiene una API pública de este tipo.
+contenedores) y se prueba con `php cron/naviera_diagnostico.php CONTENEDOR`. Vienen preparadas Maersk, Hapag-Lloyd,
+CMA CGM, ONE y MSC (estándar DCSA; la de MSC se pide como "Direct Integration") y COSCO (que no usa DCSA: su lector se
+completa con una respuesta real).
 
 **Contenedores de cada usuario:** cada contenedor guarda quién lo cargó. En el tablero y en la página Contenedores se elige
 "Contenedores: Míos / De todos" (se recuerda para la próxima vez). Los clientes son compartidos por todos.
