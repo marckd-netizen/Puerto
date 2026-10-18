@@ -199,6 +199,25 @@ return [
                 'url'         => '',
                 'encabezados' => [],
             ],
+            // Navieras que operan en el Río de la Plata a través de agencias locales (miembros de DCSA):
+            'ZIM' => [
+                'activa'      => false,
+                'prefijos'    => ['ZIMU', 'ZCSU'],
+                'url'         => '',
+                'encabezados' => [],
+            ],
+            'HMM' => [
+                'activa'      => false,
+                'prefijos'    => ['HDMU', 'HMMU'],
+                'url'         => '',
+                'encabezados' => [],
+            ],
+            'YANG MING' => [
+                'activa'      => false,
+                'prefijos'    => ['YMLU', 'YMMU'],
+                'url'         => '',
+                'encabezados' => [],
+            ],
             'PIL' => [                // Pacific International Lines: no es miembro de DCSA; con una respuesta real se adapta el lector
                 'activa'      => false,
                 'formato'     => 'pil',
