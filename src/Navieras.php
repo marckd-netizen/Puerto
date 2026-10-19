@@ -142,9 +142,88 @@ final class Navieras implements ConsultaNaviera
     {
         return match ($formato) {
             'dcsa' => self::interpretarDcsa($codigo, $cuerpo, $puerto),
-            'findteu', 'generico' => self::interpretarGenerico($codigo, $cuerpo, $puerto),
+            'findteu' => self::interpretarFindteu($codigo, $cuerpo, $puerto),
+            'generico' => self::interpretarGenerico($codigo, $cuerpo, $puerto),
             default => throw new RuntimeException("el formato \"$formato\" todavía no se sabe leer: mandá la respuesta de cron/naviera_diagnostico.php para adaptarlo"),
         };
+    }
+
+    /**
+     * Respuesta de FindTEU: {"success": true, "data": {"scac", "pol", "pod": {"port", "iso_code", "eta_date"},
+     * "container": {"completed"}, "events": [{"event_date", "location": {"port", "iso_code", "terminal"},
+     * "action": {"action_name"}, "mode": {"transport_mode", "vessel": {"vessel_name", "voyage_nr"}}, "event_type"}]}}.
+     * Buque: el del evento de llegada/descarga en el puerto; si todavía no lo hay y el puerto de descarga (pod)
+     * es el nuestro, el del último evento con buque (el que lo trae), con la ETA del pod.
+     */
+    public static function interpretarFindteu(string $servicio, string $json, string $puerto = 'UYMVD'): ?ResultadoNaviera
+    {
+        $r = json_decode($json, true);
+        if (!is_array($r)) {
+            throw new RuntimeException('la respuesta no es JSON');
+        }
+        if (isset($r['success']) && !$r['success']) {
+            $texto = trim((string) ($r['error']['text'] ?? ''));
+            // Contenedor que todavía no encuentra: no es un error del sitio, se reintenta más adelante.
+            if ($texto === '' || preg_match('/not found|no data|processing|queued/i', $texto)) {
+                return null;
+            }
+            throw new RuntimeException($texto);
+        }
+        $d = $r['data'] ?? null;
+        if (!is_array($d) || (empty($d['events']) && empty($d['pod']))) {
+            return null;
+        }
+        $puerto = strtoupper($puerto);
+        $linea = trim((string) ($d['scac'] ?? ''));
+        $nombre = $servicio . ($linea !== '' ? " ($linea)" : '');
+        $esPuerto = fn($l) => strtoupper(trim((string) ($l['iso_code'] ?? ''))) === $puerto
+            || ($puerto === 'UYMVD' && stripos((string) ($l['port'] ?? ''), 'montevideo') !== false);
+
+        $conBuque = [];
+        $enPuerto = null;
+        foreach ($d['events'] ?? [] as $ev) {
+            $buque = trim((string) ($ev['mode']['vessel']['vessel_name'] ?? ''));
+            $fecha = Texto::fecha($ev['event_date'] ?? null);
+            if ($buque === '') {
+                continue;
+            }
+            $e = [
+                'buque' => $buque,
+                'viaje' => trim((string) ($ev['mode']['vessel']['voyage_nr'] ?? '')) ?: null,
+                'fecha' => $fecha,
+                'real' => strtolower((string) ($ev['event_type'] ?? '')) === 'actual',
+                'accion' => (string) ($ev['action']['action_name'] ?? ''),
+            ];
+            $conBuque[] = $e;
+            if ($esPuerto($ev['location'] ?? []) && preg_match('/arriv|discharg|unload|berth/i', $e['accion'])) {
+                // La llegada/descarga real gana a la estimada; entre iguales, la última de la lista.
+                if ($enPuerto === null || $e['real'] || !$enPuerto['real']) {
+                    $enPuerto = $e;
+                }
+            }
+        }
+
+        $pod = $d['pod'] ?? [];
+        $elegido = null;
+        if ($enPuerto) {
+            $elegido = $enPuerto;
+        } elseif ($esPuerto($pod) && $conBuque) {
+            $ultimo = end($conBuque);
+            $elegido = ['buque' => $ultimo['buque'], 'viaje' => $ultimo['viaje'], 'fecha' => Texto::fecha($pod['eta_date'] ?? null), 'real' => false];
+        }
+
+        if ($elegido === null) {
+            $destino = trim(($pod['port'] ?? '') . (($pod['iso_code'] ?? '') !== '' ? " ({$pod['iso_code']})" : ''));
+            return new ResultadoNaviera($nombre, null, null, null, '', [
+                "Tracking $nombre: " . ($esPuerto($pod) ? 'todavía sin buque asignado' : 'no viene a Montevideo' . ($destino !== '' ? " · destino $destino" : ''))
+                . (!empty($pod['eta_date']) ? ' · ETA ' . substr((string) Texto::mostrarFecha(Texto::fecha($pod['eta_date'])), 0, 5) : ''),
+            ]);
+        }
+        $fecha = $elegido['fecha'];
+        return new ResultadoNaviera($nombre, $elegido['buque'], $elegido['viaje'], $fecha, $elegido['real'] ? 'ACT' : 'EST', [
+            "Tracking $nombre: {$elegido['buque']}" . ($elegido['viaje'] ? " viaje {$elegido['viaje']}" : '')
+            . ' · ' . ($elegido['real'] ? 'llegó' : 'llegada estimada') . ' ' . ($fecha ? substr((string) Texto::mostrarFecha($fecha), 0, 5) : '(sin fecha)'),
+        ]);
     }
 
     /**
