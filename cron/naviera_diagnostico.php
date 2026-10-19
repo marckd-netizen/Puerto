@@ -22,8 +22,23 @@ $navCfg = $cfg['navieras'] ?? [];
 $navieras = new Navieras($navCfg, $cfg['http'] ?? []);
 $lineas = $navieras->lineasPara($numero);
 if (!$lineas) {
-    exit("Ninguna naviera activa corresponde al prefijo " . substr($numero, 0, 4) . ".\n"
-        . "Activala en config.php → navieras → lineas (activa, url y clave), agregá el prefijo o usá 'probar_todas' => true.\n");
+    echo "No hay ningún servicio de tracking activo para " . Validacion::formatearContenedor($numero) . ". Lo que hay en config.php:\n";
+    if (empty($navCfg['lineas'])) {
+        echo "  (no hay sección 'navieras' → 'lineas': copiala de config.example.php)\n";
+    }
+    foreach ($navCfg['lineas'] ?? [] as $codigo => $linea) {
+        $prefijos = $linea['prefijos'] ?? [];
+        echo "  $codigo: " . match (true) {
+            empty($linea['activa']) => "desactivado → poné 'activa' => true",
+            empty($linea['url']) => "sin dirección → completá 'url'",
+            !in_array('*', $prefijos, true) && !in_array(substr($numero, 0, 4), $prefijos, true) => 'no corresponde al prefijo ' . substr($numero, 0, 4),
+            default => 'activo',
+        } . "\n";
+    }
+    if (!isset($navCfg['lineas']['FINDTEU'])) {
+        echo "\nFalta FINDTEU: reemplazá toda la sección 'navieras' de config.php por la de config.example.php.\n";
+    }
+    exit(1);
 }
 foreach ($lineas as $codigo => $linea) {
     echo "=== $codigo\n";
