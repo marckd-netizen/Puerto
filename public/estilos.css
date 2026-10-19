@@ -118,3 +118,8 @@ form.login p { margin: 0; }
 .numero-aviso { min-height: 1em; font-size: 12px; color: var(--suave); }
 .numero-aviso.falla { color: var(--error); }
 .numero-aviso.bien { color: #1e8e3e; }
+details.editar-contenedor { display: inline-block; vertical-align: top; }
+details.editar-contenedor summary { list-style: none; cursor: pointer; text-decoration: underline; font-size: 12px; margin-right: 6px; display: inline; }
+details.editar-contenedor summary::-webkit-details-marker { display: none; }
+details.editar-contenedor[open] { display: block; margin-bottom: 6px; }
+details.editar-contenedor form.formulario { display: flex; white-space: normal; min-width: 220px; margin-top: 4px; padding: 8px; border: 1px solid var(--borde); border-radius: 6px; background: var(--fondo); }

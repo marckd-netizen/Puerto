@@ -121,6 +121,40 @@ final class Contenedores
 
     // ------------------------------------------------------------ contenedores
 
+    /**
+     * Cambia la carpeta y el cliente de un contenedor ya cargado.
+     * @param ?int $clienteId null = sin cliente
+     * @return array{ok: bool, mensaje: string}
+     */
+    public function editarContenedor(int $id, string $carpeta, ?int $clienteId): array
+    {
+        $carpeta = Texto::limpiar($carpeta);
+        $st = $this->db->prepare('SELECT numero, carpeta FROM contenedores WHERE id = ?');
+        $st->execute([$id]);
+        $c = $st->fetch();
+        if (!$c) {
+            return ['ok' => false, 'mensaje' => 'El contenedor no existe.'];
+        }
+        $legible = Validacion::formatearContenedor($c['numero']);
+        if ($carpeta === '') {
+            return ['ok' => false, 'mensaje' => "Falta el número de carpeta de $legible."];
+        }
+        if ($clienteId !== null) {
+            $st = $this->db->prepare('SELECT COUNT(*) FROM clientes WHERE id = ?');
+            $st->execute([$clienteId]);
+            if (!(int) $st->fetchColumn()) {
+                return ['ok' => false, 'mensaje' => 'El cliente elegido no existe.'];
+            }
+        }
+        $st = $this->db->prepare('SELECT COUNT(*) FROM contenedores WHERE numero = ? AND carpeta = ? AND id <> ?');
+        $st->execute([$c['numero'], $carpeta, $id]);
+        if ((int) $st->fetchColumn()) {
+            return ['ok' => false, 'mensaje' => "$legible ya está cargado en la carpeta $carpeta."];
+        }
+        $this->db->prepare('UPDATE contenedores SET carpeta = ?, cliente_id = ? WHERE id = ?')->execute([$carpeta, $clienteId, $id]);
+        return ['ok' => true, 'mensaje' => "$legible: carpeta $carpeta" . ($clienteId === null ? ', sin cliente' : '') . ' (guardado).'];
+    }
+
     /** @return array{ok: bool, mensaje: string, id?: int} */
     /** Contenedor entero o apertura: se siguen distinto. */
     public const TIPOS = ['entero' => 'Entero', 'apertura' => 'Apertura'];

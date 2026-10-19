@@ -31,6 +31,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         case 'importar':
             avisarImportacion($servicio->importarContenedores((string) $_POST['texto'], Acceso::usuario()), 'Contenedores');
             break;
+        case 'editar':
+            $r = $servicio->editarContenedor($id, (string) ($_POST['carpeta'] ?? ''), ((int) ($_POST['cliente_id'] ?? 0)) ?: null);
+            avisar($r['ok'] ? 'ok' : 'error', $r['mensaje']);
+            break;
         case 'tipo':
             if ($tipo = Contenedores::tipoDe((string) ($_POST['tipo'] ?? ''))) {
                 $db->prepare('UPDATE contenedores SET tipo = ? WHERE id = ?')->execute([$tipo, $id]);
@@ -270,6 +274,22 @@ mostrarAvisos();
                 <?php endif; ?>
             </td>
             <td class="acciones">
+                <details class="editar-contenedor">
+                    <summary class="enlace">Editar</summary>
+                    <form method="post" class="formulario">
+                        <?= Acceso::campoToken() ?><input type="hidden" name="accion" value="editar"><input type="hidden" name="id" value="<?= (int) $c['id'] ?>">
+                        <label>Carpeta <input name="carpeta" required value="<?= e($c['carpeta']) ?>"></label>
+                        <label>Cliente
+                            <select name="cliente_id">
+                                <option value="">(sin cliente)</option>
+                                <?php foreach ($clientes as $cl): ?>
+                                    <option value="<?= (int) $cl['id'] ?>" <?= (int) $c['cliente_id'] === (int) $cl['id'] ? 'selected' : '' ?>><?= e($cl['nombre']) ?> — <?= e($cl['rut']) ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </label>
+                        <button type="submit">Guardar</button>
+                    </form>
+                </details>
                 <?php if ($c['activo']): ?>
                     <form method="post"><?= Acceso::campoToken() ?><input type="hidden" name="accion" value="consultar"><input type="hidden" name="id" value="<?= (int) $c['id'] ?>"><button type="submit" class="enlace">Consultar ahora</button></form>
                     <?php $otroTipo = ($c['tipo'] ?? 'entero') === 'apertura' ? 'entero' : 'apertura'; ?>

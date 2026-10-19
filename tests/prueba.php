@@ -228,6 +228,19 @@ verificar($r2['ok'] === 0 && str_contains($r2['errores'][0], 'debería ser 6 (MS
 $r = $cont->guardarContenedor('CSQU3054383', '2026-001', $rutOk);
 verificar($r['ok'] && (int) $db3->query('SELECT COUNT(*) FROM contenedores')->fetchColumn() === 4, 'el mismo contenedor y carpeta no se duplica');
 
+$idCsqu = (int) $db3->query("SELECT id FROM contenedores WHERE numero = 'CSQU3054383' AND carpeta = '2026-001'")->fetchColumn();
+$otroCliente = (int) $db3->query("SELECT id FROM clientes WHERE rut = '210000000019'")->fetchColumn();
+$r = $cont->editarContenedor($idCsqu, ' 2026-001-B ', $otroCliente);
+$fila = $db3->query("SELECT carpeta, cliente_id FROM contenedores WHERE id = $idCsqu")->fetch();
+verificar($r['ok'] && $fila['carpeta'] === '2026-001-B' && (int) $fila['cliente_id'] === $otroCliente, 'editar: cambia carpeta y cliente');
+$dup = $cont->guardarContenedor('CSQU3054383', 'DUP');
+verificar(!$cont->editarContenedor($idCsqu, 'DUP', null)['ok'], 'editar: no deja repetir contenedor y carpeta');
+$db3->exec('DELETE FROM contenedores WHERE id = ' . (int) $dup['id']);
+verificar(!$cont->editarContenedor($idCsqu, '', null)['ok'] && !$cont->editarContenedor($idCsqu, 'X', 99999)['ok'], 'editar: carpeta obligatoria y cliente existente');
+$r = $cont->editarContenedor($idCsqu, '2026-001', null);
+verificar($r['ok'] && $db3->query("SELECT cliente_id FROM contenedores WHERE id = $idCsqu")->fetchColumn() === null, 'editar: se puede dejar sin cliente');
+$db3->prepare('UPDATE contenedores SET cliente_id = (SELECT id FROM clientes WHERE rut = ?) WHERE id = ?')->execute([$rutOk, $idCsqu]);
+
 echo "Lucía y vinculación con buques\n";
 $ahoraLucia = strtotime('2026-10-07 12:30:00');
 $noConf = $cont->consultarPendientes(new LuciaNoConfigurada(), ['pausa_segundos' => 0], $ahoraLucia);
