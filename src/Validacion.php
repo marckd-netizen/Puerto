@@ -46,6 +46,26 @@ final class Validacion
         return self::formatoContenedor($numero) && self::digitoContenedor($numero) === (int) $numero[10];
     }
 
+    /**
+     * Valida un número de contenedor según ISO 6346 (ya normalizado, sin guiones).
+     * @return ?string null si es válido; si no, el motivo para mostrar
+     */
+    public static function errorContenedor(string $numero): ?string
+    {
+        if (!self::formatoContenedor($numero)) {
+            return "\"$numero\" no es un número de contenedor: son 4 letras y 7 números (AAAA-123456-7)";
+        }
+        if (!in_array($numero[3], ['U', 'J', 'Z'], true)) {
+            return 'La cuarta letra de ' . self::formatearContenedor($numero) . " es \"{$numero[3]}\": según ISO 6346 tiene que ser U (contenedor), J (equipo desmontable) o Z (chasis o tráiler)";
+        }
+        $digito = self::digitoContenedor($numero);
+        if ($digito !== (int) $numero[10]) {
+            return 'El dígito verificador de ' . self::formatearContenedor($numero) . " no corresponde: según ISO 6346 debería ser $digito ("
+                . substr($numero, 0, 4) . '-' . substr($numero, 4, 6) . "-$digito). Revisá el número";
+        }
+        return null;
+    }
+
     /** Deja solo los dígitos: "21.234.567-0012" → "212345670012" */
     public static function normalizarRut(string $s): string
     {

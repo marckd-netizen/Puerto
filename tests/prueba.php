@@ -201,6 +201,8 @@ verificar(!Tablero::ocultaPorServicio(['servicios' => []], $ocultos), 'un buque 
 echo "Validaciones\n";
 verificar(Validacion::normalizarContenedor(' csqu 305438-3 ') === 'CSQU3054383', 'contenedor: se normaliza "csqu 305438-3"');
 verificar(Validacion::digitoContenedorCorrecto('CSQU3054383'), 'contenedor: dígito verificador correcto (ejemplo ISO 6346)');
+verificar(Validacion::digitoContenedorCorrecto('MSKU3881107') && Validacion::digitoContenedor('MSKU3881100') === 7, 'contenedor: ejemplo publicado MSKU388110 → 7');
+verificar(Validacion::errorContenedor('CSQU3054383') === null && Validacion::errorContenedor('CSQU305438') !== null, 'contenedor: válido / incompleto');
 verificar(Validacion::formatearContenedor('csqu3054383') === 'CSQU-305438-3' && Validacion::formatearContenedor('CSQU-305438-3') === 'CSQU-305438-3', 'contenedor: se muestra como AAAA-123456-7, tenga o no guiones');
 verificar(!Validacion::digitoContenedorCorrecto('CSQU3054384'), 'contenedor: detecta dígito verificador incorrecto');
 verificar(!Validacion::formatoContenedor('CSQ3054383') && !Validacion::formatoContenedor('CSQU305438'), 'contenedor: rechaza formatos que no son AAAAnnnnnnn');
@@ -219,9 +221,10 @@ $r = $cont->importarClientes("RUT\tNombre\n$rutOk\tEMPRESA EJEMPLO S.A.\n2100000
 verificar($r['ok'] === 2 && count($r['errores']) === 1, 'importa 2 clientes desde Excel (ignora encabezado y rechaza RUT inválido)');
 $r = $cont->importarClientes("$rutOk;EMPRESA EJEMPLO SOCIEDAD ANONIMA");
 verificar($r['ok'] === 1 && $db3->query("SELECT nombre FROM clientes WHERE rut = '$rutOk'")->fetchColumn() === 'EMPRESA EJEMPLO SOCIEDAD ANONIMA', 'reimportar un RUT actualiza el nombre (separador ;)');
-$r = $cont->importarContenedores("Contenedor\tCarpeta\tRUT\nCSQU3054383\t2026-001\t$rutOk\nmsku 907032-3\t2026-002\t$rutOk\nTGHU8785330\t2026-003\nMSCU1234565\t2026-004\t210000000019\nABC123\t2026-005\nCSQU3054383\t2026-006\t999999999999\n");
+$r = $cont->importarContenedores("Contenedor\tCarpeta\tRUT\nCSQU3054383\t2026-001\t$rutOk\nmsku 907032-3\t2026-002\t$rutOk\nTGHU8785330\t2026-003\nMSCU1234566\t2026-004\t210000000019\nABC123\t2026-005\nCSQU3054383\t2026-006\t999999999999\n");
 verificar($r['ok'] === 4 && count($r['errores']) === 2, 'importa 4 contenedores; rechaza formato inválido y cliente inexistente');
-verificar(count($r['avisos']) === 1 && str_contains($r['avisos'][0], 'MSCU-123456-5'), 'avisa el dígito verificador incorrecto de MSCU1234565');
+$r2 = $cont->importarContenedores("MSCU1234565\t2026-099\nMSCA1234565\t2026-098\n");
+verificar($r2['ok'] === 0 && str_contains($r2['errores'][0], 'debería ser 6 (MSCU-123456-6)') && str_contains($r2['errores'][1], 'tiene que ser U'), 'rechaza dígito verificador incorrecto (dice cuál corresponde) y categoría inválida');
 $r = $cont->guardarContenedor('CSQU3054383', '2026-001', $rutOk);
 verificar($r['ok'] && (int) $db3->query('SELECT COUNT(*) FROM contenedores')->fetchColumn() === 4, 'el mismo contenedor y carpeta no se duplica');
 
@@ -237,7 +240,7 @@ $vinc = $db3->query('SELECT c.numero, e.terminal, e.buque, e.viaje FROM contened
 verificar(($vinc['CSQU3054383']['buque'] ?? '') === 'XIAMEN EXPRESS', 'CSQU3054383 → XIAMEN EXPRESS (mismo viaje)');
 verificar(($vinc['TGHU8785330']['viaje'] ?? '') === '943N', 'TGHU8785330 → TIGER GAUCHO viaje 943N, no el 942N');
 verificar(($vinc['MSKU9070323']['buque'] ?? '') === 'INCANSABLE' && $vinc['MSKU9070323']['viaje'] === 'Sem. 41', 'MSKU9070323 → INCANSABLE de la escala con ETA más cercana a la fecha de Lucía (TCP, semana 41)');
-verificar($vinc['MSCU1234565']['buque'] === null && str_contains((string) $db3->query("SELECT lucia_mensaje FROM contenedores WHERE numero = 'MSCU1234565'")->fetchColumn(), 'no figura'), 'MSCU1234565: buque desconocido queda sin vincular, con aviso');
+verificar($vinc['MSCU1234566']['buque'] === null && str_contains((string) $db3->query("SELECT lucia_mensaje FROM contenedores WHERE numero = 'MSCU1234566'")->fetchColumn(), 'no figura'), 'MSCU1234566: buque desconocido queda sin vincular, con aviso');
 $r = $cont->consultarPendientes($lucia, ['pausa_segundos' => 0, 'reconsultar_horas' => 2], $ahoraLucia + 3600);
 verificar($r['consultados'] === 0, 'no se vuelve a consultar antes de 2 horas');
 $r = $cont->consultarPendientes($lucia, ['pausa_segundos' => 0, 'reconsultar_horas' => 2], $ahoraLucia + 2 * 3600);
@@ -514,9 +517,9 @@ $db6->exec('UPDATE contenedores SET escala_id = ' . (int) $db6->lastInsertId());
 verificar(count($cont6->porEscala('beto')[1] ?? []) === 2 && count($cont6->porEscala()[1] ?? []) === 3, 'tablero: los contenedores de un usuario o los de todos');
 verificar($db6->query("SELECT tipo FROM contenedores WHERE numero = 'CSQU3054383'")->fetchColumn() === 'entero', 'una base anterior recibe la columna tipo; los existentes quedan como enteros');
 verificar(Contenedores::tipoDe('Apertura') === 'apertura' && Contenedores::tipoDe(' a ') === 'apertura' && Contenedores::tipoDe('ENTERO') === 'entero' && Contenedores::tipoDe('xx') === null, 'tipo: reconoce Entero / Apertura y abreviaturas');
-$r = $cont6->importarContenedores("Contenedor\tCarpeta\tRUT\tTipo\nMSCU1234565\t4\t\tApertura\nCSQU3054383\t1\t\t\nHAMU4640084\t5\t\tmedio\n", 'ana');
+$r = $cont6->importarContenedores("Contenedor\tCarpeta\tRUT\tTipo\nMSCU1234566\t4\t\tApertura\nCSQU3054383\t1\t\t\nHAMU4640084\t5\t\tmedio\n", 'ana');
 $tipos = $db6->query('SELECT numero, tipo FROM contenedores ORDER BY numero')->fetchAll(PDO::FETCH_KEY_PAIR);
-verificar($r['ok'] === 2 && count($r['errores']) === 1 && $tipos['MSCU1234565'] === 'apertura' && $tipos['CSQU3054383'] === 'entero', 'importa el tipo desde Excel; sin tipo queda entero; un tipo desconocido se rechaza');
+verificar($r['ok'] === 2 && count($r['errores']) === 1 && $tipos['MSCU1234566'] === 'apertura' && $tipos['CSQU3054383'] === 'entero', 'importa el tipo desde Excel; sin tipo queda entero; un tipo desconocido se rechaza');
 $cont6->guardarContenedor('CSQU3054383', '1', null, 'ana', 'apertura');
 $cont6->importarContenedores("CSQU3054383\t1", 'ana');
 verificar($db6->query("SELECT tipo FROM contenedores WHERE numero = 'CSQU3054383'")->fetchColumn() === 'apertura', 'reimportar sin tipo no pisa una apertura');

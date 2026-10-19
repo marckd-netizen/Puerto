@@ -131,7 +131,8 @@ mostrarAvisos();
         <form method="post" class="formulario">
             <?= Acceso::campoToken() ?>
             <input type="hidden" name="accion" value="guardar">
-            <label>Contenedor <input name="numero" required pattern="\s*[A-Za-z]{4}\s*-?\s*\d{6}\s*-?\s*\d\s*" placeholder="AAAA-123456-7" style="text-transform:uppercase"></label>
+            <label>Contenedor <input name="numero" id="numero-contenedor" required maxlength="13" autocomplete="off" placeholder="AAAA-123456-7" style="text-transform:uppercase">
+                <small id="numero-aviso" class="numero-aviso"></small></label>
             <label>Carpeta <input name="carpeta" required></label>
             <fieldset class="opciones-tipo">
                 <legend>Tipo</legend>
@@ -163,6 +164,45 @@ mostrarAvisos();
         </form>
     </section>
 </div>
+
+<script>
+// Número de contenedor: guiones automáticos (AAAA-123456-7) y validación ISO 6346 mientras se escribe.
+// El servidor vuelve a validar al guardar.
+(function () {
+    var campo = document.getElementById('numero-contenedor'), aviso = document.getElementById('numero-aviso');
+    if (!campo) return;
+    var valor = {};
+    'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').reduce(function (v, letra) {
+        if (v % 11 === 0) v++;           // ISO 6346: se saltean 11, 22 y 33
+        valor[letra] = v;
+        return v + 1;
+    }, 10);
+    function digito(n) {
+        var suma = 0;
+        for (var i = 0; i < 10; i++) {
+            var c = n.charAt(i);
+            suma += (/\d/.test(c) ? +c : valor[c]) * Math.pow(2, i);
+        }
+        return suma % 11 % 10;
+    }
+    function revisar() {
+        var n = campo.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 11);
+        var con = n.slice(0, 4) + (n.length > 4 ? '-' + n.slice(4, 10) : '') + (n.length > 10 ? '-' + n.slice(10) : '');
+        if (campo.value !== con) campo.value = con;
+        var error = '', ayuda = '';
+        if (!/^[A-Z]*$/.test(n.slice(0, 4))) error = 'Empieza con 4 letras';
+        else if (n.length > 4 && !/^\d+$/.test(n.slice(4))) error = 'Después de las 4 letras van 7 números';
+        else if (n.length >= 4 && 'UJZ'.indexOf(n.charAt(3)) < 0) error = 'La cuarta letra tiene que ser U, J o Z';
+        else if (n.length === 10) ayuda = 'El dígito verificador debería ser ' + digito(n);
+        else if (n.length === 11 && digito(n) !== +n.charAt(10)) error = 'El dígito verificador no corresponde: debería ser ' + digito(n);
+        else if (n.length === 11) ayuda = '✔ Número válido';
+        campo.setCustomValidity(error || (n.length > 0 && n.length < 11 ? 'Faltan caracteres: son 4 letras y 7 números' : ''));
+        aviso.textContent = error || ayuda;
+        aviso.className = 'numero-aviso' + (error ? ' falla' : (ayuda.charAt(0) === '✔' ? ' bien' : ''));
+    }
+    campo.addEventListener('input', revisar);
+})();
+</script>
 
 <form class="filtros" method="get">
     <input type="search" name="q" value="<?= e($fBuscar) ?>" placeholder="Contenedor, carpeta, cliente o buque">

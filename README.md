@@ -100,6 +100,12 @@ También acepta APIs oficiales de navieras con el estándar DCSA Track & Trace (
 Los contenedores cargados antes de esta opción no tienen usuario: la página Contenedores ofrece pasarlos a tu nombre.
 La columna nueva se agrega sola a la base existente la primera vez que se abre el sitio.
 
+**Número de contenedor (ISO 6346):** al cargarlo se ponen los guiones solos mientras se escribe (`MSKU9070323` →
+`MSKU-907032-3`) y se valida: 4 letras (la cuarta U, J o Z) y 7 números, con el dígito verificador de la norma
+(cada carácter vale su número o, las letras, A=10, B=12, … salteando 11, 22 y 33; se multiplica por 2^posición, se suma,
+y el resto de dividir por 11 —10 cuenta como 0— es el dígito). Un número que no cumple no se guarda, y el mensaje dice
+cuál debería ser el dígito. Lo mismo al importar desde Excel.
+
 **Entero o apertura:** al cargar un contenedor se marca si es **Entero** o **Apertura** (por defecto, Entero). Al importar
 desde Excel va como cuarta columna, opcional (Entero/E/FCL o Apertura/A/LCL). Se muestra como etiqueta en el tablero y en
 Contenedores, donde se puede filtrar y cambiar con "Pasar a apertura" / "Pasar a entero".

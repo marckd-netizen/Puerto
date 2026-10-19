@@ -145,8 +145,8 @@ final class Contenedores
     {
         $numero = Validacion::normalizarContenedor($numero);
         $carpeta = Texto::limpiar($carpeta);
-        if (!Validacion::formatoContenedor($numero)) {
-            return ['ok' => false, 'mensaje' => "Contenedor inválido ($numero): el formato es AAAA-123456-7"];
+        if (($error = Validacion::errorContenedor($numero)) !== null) {
+            return ['ok' => false, 'mensaje' => $error];
         }
         if ($carpeta === '') {
             return ['ok' => false, 'mensaje' => "Falta el número de carpeta del contenedor " . Validacion::formatearContenedor($numero)];
@@ -161,8 +161,6 @@ final class Contenedores
         if ($tipo !== null && !isset(self::TIPOS[$tipo])) {
             return ['ok' => false, 'mensaje' => "Tipo desconocido para " . Validacion::formatearContenedor($numero) . ": tiene que ser Entero o Apertura"];
         }
-        $aviso = Validacion::digitoContenedorCorrecto($numero)
-            ? '' : ' (atención: el dígito verificador no coincide, revisá el número)';
         $legible = Validacion::formatearContenedor($numero);
 
         $st = $this->db->prepare('SELECT id FROM contenedores WHERE numero = ? AND carpeta = ?');
@@ -171,11 +169,11 @@ final class Contenedores
         if ($id !== false) {
             $this->db->prepare('UPDATE contenedores SET cliente_id = ?, activo = 1, usuario = COALESCE(usuario, ?), tipo = COALESCE(?, tipo) WHERE id = ?')
                 ->execute([$clienteId, $usuario, $tipo, $id]);
-            return ['ok' => true, 'mensaje' => "Contenedor $legible (carpeta $carpeta) actualizado$aviso", 'id' => (int) $id];
+            return ['ok' => true, 'mensaje' => "Contenedor $legible (carpeta $carpeta) actualizado", 'id' => (int) $id];
         }
         $this->db->prepare('INSERT INTO contenedores (numero, carpeta, cliente_id, creado, usuario, tipo) VALUES (?, ?, ?, ?, ?, ?)')
             ->execute([$numero, $carpeta, $clienteId, date('Y-m-d H:i:s'), $usuario, $tipo ?? 'entero']);
-        return ['ok' => true, 'mensaje' => "Contenedor $legible (carpeta $carpeta) agregado$aviso", 'id' => (int) $this->db->lastInsertId()];
+        return ['ok' => true, 'mensaje' => "Contenedor $legible (carpeta $carpeta) agregado", 'id' => (int) $this->db->lastInsertId()];
     }
 
     // -------------------------------------------------------------- importación
