@@ -89,6 +89,8 @@ mensajes simplificados, tránsito e incautaciones.
 **Tracking de las navieras (FindTEU):** cuando Lucía todavía no conoce el contenedor (por ejemplo, mientras navega), o lo
 conoce pero no se pudo saber el buque, se consulta FindTEU (https://www.findteu.com), que unifica el tracking de todas las
 navieras. Se toma el buque con el que llega a Montevideo (UYMVD) y se vincula a la escala del tablero igual que el de Lucía.
+Cada contenedor se consulta **como mucho una vez por semana** (`reconsultar_dias`; mientras tanto se usa el último
+resultado) y **no se consulta más cuando ya está manifestado en Lucía**.
 Se configura en `config.php → navieras` (activa y clave en `X-Authorization-ApiKey`; la de demostración es `123456789`)
 y se prueba con `php cron/naviera_diagnostico.php CONTENEDOR`, que guarda la respuesta en `data/`.
 También acepta APIs oficiales de navieras con el estándar DCSA Track & Trace (ver el ejemplo en `config.example.php`).

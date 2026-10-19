@@ -7,29 +7,53 @@ final class Contenedores
     private ?BuscadorManifiesto $manifiestos = null;
     private int $reconsultarHoras = 2;
     private ?ConsultaNaviera $navieras = null;
+    private int $navieraDias = 7;
 
     public function __construct(private PDO $db)
     {
     }
 
-    /** Activa el tracking de las navieras, para conocer el buque cuando Lucía todavía no lo sabe. */
-    public function usarNavieras(?ConsultaNaviera $navieras): void
+    /**
+     * Activa el tracking de las navieras, para conocer el buque cuando Lucía todavía no lo sabe.
+     * Cada contenedor se consulta como mucho una vez cada $dias días (el servicio puede cobrar por consulta);
+     * mientras tanto se usa el último resultado guardado.
+     */
+    public function usarNavieras(?ConsultaNaviera $navieras, int $dias = 7): void
     {
         $this->navieras = $navieras;
+        $this->navieraDias = max(0, $dias);
     }
 
-    /** @return array{0: ?ResultadoNaviera, 1: ?string} resultado (solo si trae buque) y aviso de error */
-    private function trackingNaviera(string $numero): array
+    /** @return array{0: ?ResultadoNaviera, 1: ?string} resultado (consultado o el guardado) y aviso de error */
+    private function trackingNaviera(array $c, int $ahora): array
     {
         if ($this->navieras === null) {
             return [null, null];
         }
-        try {
-            $r = $this->navieras->consultar($numero);
-        } catch (Throwable $t) {
-            return [null, 'No se pudo consultar el tracking de la naviera: ' . $t->getMessage()];
+        $ultima = $c['naviera_consulta'] ?? null;
+        if ($ultima !== null && strtotime($ultima) > $ahora - $this->navieraDias * 86400) {
+            return [self::navieraGuardada($c['naviera_detalle'] ?? null), null];
         }
+        try {
+            $r = $this->navieras->consultar($c['numero']);
+        } catch (Throwable $t) {
+            // Sin marcar la consulta: se reintenta en la próxima pasada.
+            return [self::navieraGuardada($c['naviera_detalle'] ?? null), 'No se pudo consultar el tracking de la naviera: ' . $t->getMessage()];
+        }
+        $this->db->prepare('UPDATE contenedores SET naviera_consulta = ?, naviera_detalle = ? WHERE id = ?')->execute([
+            date('Y-m-d H:i:s', $ahora),
+            $r === null ? null : json_encode(get_object_vars($r), JSON_UNESCAPED_UNICODE),
+            $c['id'],
+        ]);
         return [$r, null];
+    }
+
+    private static function navieraGuardada(?string $json): ?ResultadoNaviera
+    {
+        $d = $json ? json_decode($json, true) : null;
+        return is_array($d) && isset($d['naviera'])
+            ? new ResultadoNaviera($d['naviera'], $d['buque'] ?? null, $d['viaje'] ?? null, $d['fecha'] ?? null, $d['tipoFecha'] ?? '', $d['resumen'] ?? [])
+            : null;
     }
 
     /** Activa la consulta del buque por número de manifiesto (Lucía no lo informa en los datos del contenedor). */
@@ -319,7 +343,7 @@ final class Contenedores
 
         if (!$r->encontrado) {
             // Lucía todavía no lo conoce (por ejemplo, viene navegando): el tracking de la naviera dice en qué buque llega.
-            [$nav, $avisoNav] = $this->trackingNaviera($c['numero']);
+            [$nav, $avisoNav] = $this->trackingNaviera($c, $ahora);
             if ($nav === null || $nav->buque === null) {
                 $this->db->prepare("UPDATE contenedores SET lucia_estado = 'no_encontrado', lucia_consulta = ?, lucia_mensaje = ?, lucia_detalle = ? WHERE id = ?")
                     ->execute([$cuando, $avisoNav ? mb_substr($avisoNav, 0, 255) : null, $nav ? json_encode(['resumen' => $nav->resumen], JSON_UNESCAPED_UNICODE) : null, $c['id']]);
@@ -375,9 +399,11 @@ final class Contenedores
         }
 
         // Sin buque por Lucía ni por manifiesto: el tracking de la naviera, antes de deducirlo por terminal y fecha.
+        // Si el contenedor ya está manifestado en Lucía, el tracking no se consulta más.
         $navieraUsada = null;
-        if ($buque === null) {
-            [$nav, $avisoNav] = $this->trackingNaviera($c['numero']);
+        $manifestado = !empty($r->detalle['claves_manifiesto']) || !empty($r->detalle['manifiesto']);
+        if ($buque === null && !$manifestado) {
+            [$nav, $avisoNav] = $this->trackingNaviera($c, $ahora);
             if ($nav !== null) {
                 array_push($detalle['resumen'], ...$nav->resumen);
                 if ($nav->buque !== null) {

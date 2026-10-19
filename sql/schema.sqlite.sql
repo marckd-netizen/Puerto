@@ -67,6 +67,8 @@ CREATE TABLE IF NOT EXISTS contenedores (
     vinculado       DATETIME     NULL,
     usuario         VARCHAR(40)  NULL,
     tipo            VARCHAR(10)  NOT NULL DEFAULT 'entero',
+    naviera_consulta DATETIME    NULL,
+    naviera_detalle TEXT         NULL,
     UNIQUE (numero, carpeta)
 );
 

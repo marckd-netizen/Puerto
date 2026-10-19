@@ -49,7 +49,7 @@ final class Tareas
             $lucia = Lucia::crear($luciaCfg);
             $servicio = new Contenedores($db);
             $servicio->usarManifiestos(Lucia::manifiestos($luciaCfg), (int) ($luciaCfg['reconsultar_horas'] ?? 2));
-            $servicio->usarNavieras(Navieras::crear($cfg['navieras'] ?? [], $cfg['http'] ?? []));
+            $servicio->usarNavieras(Navieras::crear($cfg['navieras'] ?? [], $cfg['http'] ?? []), (int) ($cfg['navieras']['reconsultar_dias'] ?? 7));
             $r = $servicio->consultarPendientes($lucia, $luciaCfg, null, fn($linea) => $salida("  $linea"));
         } catch (Throwable $t) {
             $error("[$ahora] LUCIA: ERROR {$t->getMessage()}");

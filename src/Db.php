@@ -74,6 +74,8 @@ final class Db
         $columnas = [
             ['contenedores', 'usuario', 'VARCHAR(40) NULL'],
             ['contenedores', 'tipo', "VARCHAR(10) NOT NULL DEFAULT 'entero'"],
+            ['contenedores', 'naviera_consulta', 'DATETIME NULL'],
+            ['contenedores', 'naviera_detalle', 'TEXT NULL'],
         ];
         foreach ($columnas as [$tabla, $columna, $tipo]) {
             try {

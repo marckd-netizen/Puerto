@@ -46,7 +46,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         case 'consultar':
             try {
                 $servicio->usarManifiestos(Lucia::manifiestos($cfg['lucia'] ?? []), (int) ($cfg['lucia']['reconsultar_horas'] ?? 2));
-                $servicio->usarNavieras(Navieras::crear($cfg['navieras'] ?? [], $cfg['http'] ?? []));
+                $servicio->usarNavieras(Navieras::crear($cfg['navieras'] ?? [], $cfg['http'] ?? []), (int) ($cfg['navieras']['reconsultar_dias'] ?? 7));
                 avisar('ok', $servicio->consultarUno(Lucia::crear($cfg['lucia'] ?? []), $id));
             } catch (Throwable $t) {
                 avisar('error', 'No se pudo consultar Lucía: ' . $t->getMessage());

@@ -564,14 +564,36 @@ $r = $cont7->consultarPendientes($luciaVacia, ['pausa_segundos' => 0], strtotime
 $f7 = $db7->query("SELECT * FROM contenedores WHERE numero = 'MSKU9070323'")->fetch();
 verificar((int) $f7['escala_id'] === $idSan && $f7['lucia_estado'] === 'no_encontrado' && $r['vinculados'] === 1, 'sin datos en Lucía, se vincula al buque que da el tracking (la escala de la fecha de llegada)');
 verificar(str_contains($f7['lucia_mensaje'], 'tracking de MAERSK') && str_contains(implode(' ', json_decode($f7['lucia_detalle'], true)['resumen']), 'SAN CHRISTOBAL'), 'se aclara que el buque sale del tracking');
+$db7->exec('UPDATE contenedores SET lucia_consulta = NULL');
+$r = $cont7->consultarPendientes($luciaVacia, ['pausa_segundos' => 0], strtotime('2026-10-20 10:00'));
+$f7 = $db7->query("SELECT * FROM contenedores WHERE numero = 'MSKU9070323'")->fetch();
+verificar($navFija->llamadas === 1 && (int) $f7['escala_id'] === $idSan && $r['vinculados'] === 1, 'antes de una semana no se vuelve a consultar la naviera: se usa el resultado guardado');
 $navFalla = new class implements ConsultaNaviera {
     public function consultar(string $c): ?ResultadoNaviera { throw new RuntimeException('HTTP 401'); }
 };
 $cont7->usarNavieras($navFalla);
 $db7->exec('UPDATE contenedores SET lucia_consulta = NULL');
-$r = $cont7->consultarPendientes($luciaVacia, ['pausa_segundos' => 0], strtotime('2026-10-17 10:00'));
+$r = $cont7->consultarPendientes($luciaVacia, ['pausa_segundos' => 0], strtotime('2026-10-25 10:00'));
 $f7 = $db7->query("SELECT * FROM contenedores WHERE numero = 'MSKU9070323'")->fetch();
-verificar($r['errores'] === [] && str_contains((string) $f7['lucia_mensaje'], 'HTTP 401') && (int) $f7['escala_id'] === $idSan, 'si falla el tracking se avisa, sin perder el vínculo anterior');
+verificar($r['errores'] === [] && (int) $f7['escala_id'] === $idSan, 'pasada una semana se consulta de nuevo; si falla, sigue con el resultado anterior');
+// Ya manifestado en Lucía (sin buque en los datos del contenedor): no se consulta más la naviera.
+$navContador = new class implements ConsultaNaviera {
+    public int $llamadas = 0;
+    public function consultar(string $c): ?ResultadoNaviera { $this->llamadas++; return null; }
+};
+$cont7->usarNavieras($navContador);
+$luciaManif = new class implements ConsultaLucia {
+    public function consultar(string $c): ResultadoLucia { return new ResultadoLucia(true, null, null, '2026-10-21 10:00', ['manifiesto' => '291201', 'claves_manifiesto' => [['1', '0', '291201', '1650', '20261021']]], 'TCP'); }
+};
+$db7->exec("UPDATE contenedores SET lucia_consulta = NULL, naviera_consulta = NULL");
+$cont7->consultarPendientes($luciaManif, ['pausa_segundos' => 0], strtotime('2026-11-05 10:00'));
+verificar($navContador->llamadas === 0, 'manifestado en Lucía: la naviera no se consulta más');
+$luciaSinManif = new class implements ConsultaLucia {
+    public function consultar(string $c): ResultadoLucia { return new ResultadoLucia(true, null, null, null, ['claves_manifiesto' => []]); }
+};
+$db7->exec("UPDATE contenedores SET lucia_consulta = NULL, lucia_estado = 'pendiente'");
+$cont7->consultarPendientes($luciaSinManif, ['pausa_segundos' => 0], strtotime('2026-11-05 12:00'));
+verificar($navContador->llamadas === 1, 'en Lucía pero sin manifiesto todavía: se consulta la naviera');
 
 echo "Tracking unificado (FindTEU, respuestas supuestas)\n";
 $fa = Navieras::interpretar('FINDTEU', 'findteu', file_get_contents(__DIR__ . '/fixtures/findteu_supuesta_a.json'));

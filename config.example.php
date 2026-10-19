@@ -160,6 +160,9 @@ return [
     // Clave de prueba (datos de demostración): 123456789. Probar con: php cron/naviera_diagnostico.php MSKU1234565
     'navieras' => [
         'puerto' => 'UYMVD',          // código UN/LOCODE de Montevideo
+        // Cada contenedor se consulta como mucho una vez cada tantos días (el servicio cobra por consulta).
+        // Cuando el contenedor ya está manifestado en Lucía, no se consulta más.
+        'reconsultar_dias' => 7,
         'lineas' => [
             'FINDTEU' => [
                 'activa'      => false,
