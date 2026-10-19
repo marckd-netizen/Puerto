@@ -154,84 +154,26 @@ return [
         ],
     ],
 
-    // Tracking de las navieras (APIs oficiales con el estándar DCSA Track & Trace): dice en qué buque
-    // llega un contenedor a Montevideo cuando Lucía todavía no lo sabe (por ejemplo, mientras navega).
-    // Cada naviera da la clave de su API al registrarse en su portal de desarrolladores (gratis);
-    // la dirección y el nombre del encabezado de la clave figuran en ese portal.
-    // Probar con: php cron/naviera_diagnostico.php MSKU1234565
+    // Tracking de contenedores en las navieras: dice en qué buque llega un contenedor a Montevideo
+    // cuando Lucía todavía no lo sabe (por ejemplo, mientras navega).
+    // Se usa FindTEU (https://www.findteu.com), que unifica todas las navieras y detecta sola cuál es.
+    // Clave de prueba (datos de demostración): 123456789. Probar con: php cron/naviera_diagnostico.php MSKU1234565
     'navieras' => [
         'puerto' => 'UYMVD',          // código UN/LOCODE de Montevideo
-        'probar_todas' => false,      // true: los contenedores de leasing (TGHU, TCNU, ...) se buscan en todas las activas
         'lineas' => [
-            'MAERSK' => [             // https://developer.maersk.com
+            'FINDTEU' => [
                 'activa'      => false,
-                'prefijos'    => ['MAEU', 'MSKU', 'MRKU', 'MRSU', 'MSAU', 'SUDU', 'SEAU'],
-                'url'         => 'https://api.maersk.com/track-and-trace-private/events?equipmentReference={contenedor}',
-                'encabezados' => ['Consumer-Key: PEGAR-AQUI-LA-CLAVE'],
+                'formato'     => 'findteu',
+                'prefijos'    => ['*'],   // todos los contenedores
+                'url'         => 'https://api.findteu.com/container/{contenedor}',
+                'metodo'      => 'POST',  // si responde 405, se reintenta solo con GET
+                'formulario'  => ['use_webhook' => 'false'],
+                'encabezados' => ['X-Authorization-ApiKey: 123456789'],
             ],
-            'HAPAG' => [              // https://api-portal.hlag.com
-                'activa'      => false,
-                'prefijos'    => ['HLXU', 'HLBU', 'HLCU', 'HAMU', 'UACU'],
-                'url'         => '',  // la de "Track & Trace" del portal, terminada en ?equipmentReference={contenedor}
-                'encabezados' => [],  // por ejemplo 'X-IBM-Client-Id: ...', según indique el portal
-            ],
-            'CMA CGM' => [            // https://api-portal.cma-cgm.com
-                'activa'      => false,
-                'prefijos'    => ['CMAU', 'CGMU', 'ECMU', 'APHU', 'APZU'],
-                'url'         => '',
-                'encabezados' => [],
-            ],
-            'ONE' => [                // Ocean Network Express (miembro de DCSA): pedir acceso a su API de tracking
-                'activa'      => false,
-                'prefijos'    => ['ONEU', 'NYKU', 'MOLU', 'KKFU'],
-                'url'         => '',
-                'encabezados' => [],
-            ],
-            'MSC' => [                // https://developerportal.msc.com (API DCSA; se pide "Direct Integration", puede tener costo)
-                'activa'      => false,
-                'prefijos'    => ['MSCU', 'MEDU', 'MSDU', 'MSMU'],
-                'url'         => '',
-                'encabezados' => [],
-            ],
-            'EVERGREEN' => [          // Evergreen Line (miembro de DCSA; en Uruguay, Evergreen Shipping Agency)
-                'activa'      => false,
-                'prefijos'    => ['EGHU', 'EISU', 'EMCU', 'EGSU'],
-                'url'         => '',
-                'encabezados' => [],
-            ],
-            // Navieras que operan en el Río de la Plata a través de agencias locales (miembros de DCSA):
-            'ZIM' => [
-                'activa'      => false,
-                'prefijos'    => ['ZIMU', 'ZCSU'],
-                'url'         => '',
-                'encabezados' => [],
-            ],
-            'HMM' => [
-                'activa'      => false,
-                'prefijos'    => ['HDMU', 'HMMU'],
-                'url'         => '',
-                'encabezados' => [],
-            ],
-            'YANG MING' => [
-                'activa'      => false,
-                'prefijos'    => ['YMLU', 'YMMU'],
-                'url'         => '',
-                'encabezados' => [],
-            ],
-            'PIL' => [                // Pacific International Lines: no es miembro de DCSA; con una respuesta real se adapta el lector
-                'activa'      => false,
-                'formato'     => 'pil',
-                'prefijos'    => ['PCIU'],
-                'url'         => '',
-                'encabezados' => [],
-            ],
-            'COSCO' => [              // COSCO no usa el estándar DCSA: con una respuesta real se adapta el lector
-                'activa'      => false,
-                'formato'     => 'cosco',
-                'prefijos'    => ['CCLU', 'CBHU', 'CSNU', 'CSLU'],
-                'url'         => '',
-                'encabezados' => [],
-            ],
+            // También se pueden agregar las APIs oficiales de navieras con el estándar DCSA, por ejemplo:
+            // 'MAERSK' => ['activa' => true, 'formato' => 'dcsa', 'prefijos' => ['MSKU', 'MAEU'],
+            //     'url' => 'https://api.maersk.com/track-and-trace-private/events?equipmentReference={contenedor}',
+            //     'encabezados' => ['Consumer-Key: ...']],
         ],
     ],
 

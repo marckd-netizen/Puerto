@@ -33,13 +33,13 @@ foreach ($lineas as $codigo => $linea) {
         echo "ERROR: {$t->getMessage()}\n";
         continue;
     }
-    echo "URL: {$r['url']}\nHTTP {$r['codigo']}\n";
+    echo "{$r['metodo']} {$r['url']}\nHTTP {$r['codigo']}\n";
     $archivo = dirname(__DIR__) . '/data/naviera_' . preg_replace('/\W+/', '_', $codigo) . '_' . $numero . '.json';
     @file_put_contents($archivo, $r['cuerpo']);
     echo 'Respuesta guardada en ' . $archivo . "\n" . mb_substr($r['cuerpo'], 0, 1500) . (strlen($r['cuerpo']) > 1500 ? "\n..." : '') . "\n\n";
     if ($r['codigo'] >= 200 && $r['codigo'] < 300) {
         try {
-            $res = Navieras::interpretarDcsa($codigo, $r['cuerpo'], $navCfg['puerto'] ?? 'UYMVD');
+            $res = Navieras::interpretar($codigo, $linea['formato'] ?? 'dcsa', $r['cuerpo'], $navCfg['puerto'] ?? 'UYMVD');
             echo $res === null ? "Sin eventos para este contenedor.\n" : "Buque: " . ($res->buque ?? '(sin llegada al puerto todavía)') . "\nViaje: " . ($res->viaje ?? '-')
                 . "\nLlegada: " . ($res->fecha ?? '-') . " ({$res->tipoFecha})\n" . implode("\n", $res->resumen) . "\n";
         } catch (Throwable $t) {

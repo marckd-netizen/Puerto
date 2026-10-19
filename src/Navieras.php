@@ -66,7 +66,8 @@ final class Navieras implements ConsultaNaviera
             if (empty($linea['activa']) || empty($linea['url'])) {
                 continue;
             }
-            if (in_array($prefijo, $linea['prefijos'] ?? [], true)) {
+            // '*' = servicio que unifica todas las navieras (por ejemplo FindTEU): sirve para cualquier contenedor.
+            if (in_array($prefijo, $linea['prefijos'] ?? [], true) || in_array('*', $linea['prefijos'] ?? [], true)) {
                 $propias[$codigo] = $linea;
             } else {
                 $otras[$codigo] = $linea;
@@ -99,29 +100,145 @@ final class Navieras implements ConsultaNaviera
     /** Respuesta cruda, para el diagnóstico. @return array{codigo: int, cuerpo: string, url: string} */
     public function pedirCrudo(array $linea, string $numero): array
     {
+        $r = $this->pedirUnaVez($linea, $numero);
+        if ($r['codigo'] === 405) {
+            // Método no permitido: probar con el otro (GET ↔ POST).
+            $linea['metodo'] = strtoupper($linea['metodo'] ?? 'GET') === 'POST' ? 'GET' : 'POST';
+            $r = $this->pedirUnaVez($linea, $numero);
+        }
+        return $r;
+    }
+
+    private function pedirUnaVez(array $linea, string $numero): array
+    {
         $url = str_replace(['{contenedor}', '{contenedor_guiones}'], [rawurlencode($numero), rawurlencode(Validacion::formatearContenedor($numero))], $linea['url']);
-        $r = Http::pedir($url, null, array_merge(['Accept: application/json'], $linea['encabezados'] ?? []), [
+        $encabezados = array_merge(['Accept: application/json'], $linea['encabezados'] ?? []);
+        $cuerpo = null;
+        if (strtoupper($linea['metodo'] ?? 'GET') === 'POST') {
+            $cuerpo = http_build_query($linea['formulario'] ?? []);
+            $encabezados[] = 'Content-Type: application/x-www-form-urlencoded';
+        }
+        $r = Http::pedir($url, $cuerpo, $encabezados, [
             'timeout' => (int) ($this->http['timeout'] ?? 30),
             'user_agent' => $this->http['user_agent'] ?? 'PuertoUnificado/1.0',
             'ca_bundle' => $this->http['ca_bundle'] ?? '',
         ]);
-        return $r + ['url' => $url];
+        return $r + ['url' => $url, 'metodo' => $cuerpo === null ? 'GET' : 'POST'];
     }
 
     private function pedir(string $codigo, array $linea, string $numero): ?ResultadoNaviera
     {
         $r = $this->pedirCrudo($linea, $numero);
-        if ($r['codigo'] === 404) {
-            return null; // la naviera no conoce el contenedor
+        if ($r['codigo'] === 404 || $r['codigo'] === 202) {
+            return null; // no conoce el contenedor, o lo está buscando (se reintenta en la próxima pasada)
         }
         if ($r['codigo'] < 200 || $r['codigo'] >= 300) {
             throw new RuntimeException("respondió HTTP {$r['codigo']}" . ($r['codigo'] === 401 || $r['codigo'] === 403 ? ' (revisá la clave de la API en config.php)' : ''));
         }
-        $formato = $linea['formato'] ?? 'dcsa';
-        if ($formato !== 'dcsa') {
-            throw new RuntimeException("el formato \"$formato\" todavía no se sabe leer: mandá la respuesta de cron/naviera_diagnostico.php para adaptarlo");
+        return self::interpretar($codigo, $linea['formato'] ?? 'dcsa', $r['cuerpo'], $this->cfg['puerto'] ?? 'UYMVD');
+    }
+
+    public static function interpretar(string $codigo, string $formato, string $cuerpo, string $puerto = 'UYMVD'): ?ResultadoNaviera
+    {
+        return match ($formato) {
+            'dcsa' => self::interpretarDcsa($codigo, $cuerpo, $puerto),
+            'findteu', 'generico' => self::interpretarGenerico($codigo, $cuerpo, $puerto),
+            default => throw new RuntimeException("el formato \"$formato\" todavía no se sabe leer: mandá la respuesta de cron/naviera_diagnostico.php para adaptarlo"),
+        };
+    }
+
+    /**
+     * Lector flexible para servicios que unifican navieras (FindTEU y similares) mientras no se conozca
+     * su formato exacto: recorre el JSON buscando un tramo o evento en el puerto (UYMVD o "Montevideo")
+     * con nombre de buque y fecha de llegada. El buque y el viaje se heredan del tramo que los contiene.
+     * Entre los candidatos prefiere los que hablan de llegada/ETA/descarga y la fecha real sobre la estimada.
+     */
+    public static function interpretarGenerico(string $servicio, string $json, string $puerto = 'UYMVD'): ?ResultadoNaviera
+    {
+        $datos = json_decode($json, true);
+        if (!is_array($datos)) {
+            throw new RuntimeException('la respuesta no es JSON');
         }
-        return self::interpretarDcsa($codigo, $r['cuerpo'], $this->cfg['puerto'] ?? 'UYMVD');
+        if (!$datos || self::sinDatos($datos)) {
+            return null;
+        }
+        $candidatos = [];
+        self::recorrer($datos, ['buque' => null, 'viaje' => null], strtoupper($puerto), $candidatos, '');
+        usort($candidatos, fn($a, $b) => $b['puntaje'] <=> $a['puntaje']);
+        $c = $candidatos[0] ?? null;
+        if ($c === null) {
+            return new ResultadoNaviera($servicio, null, null, null, '', ["Tracking $servicio: todavía sin llegada a $puerto"]);
+        }
+        $tipo = $c['real'] ? 'ACT' : 'EST';
+        return new ResultadoNaviera($servicio, $c['buque'], $c['viaje'], $c['fecha'], $tipo, [
+            "Tracking $servicio: " . ($c['buque'] ?? '(buque sin informar)') . ($c['viaje'] ? " viaje {$c['viaje']}" : '')
+            . ' · ' . ($c['real'] ? 'llegó' : 'llegada estimada') . ' ' . ($c['fecha'] ? Texto::mostrarFecha($c['fecha']) : '(sin fecha)'),
+        ]);
+    }
+
+    /** Respuestas tipo {"status": "processing"} o {"error": ...} sin datos todavía. */
+    private static function sinDatos(array $d): bool
+    {
+        $estado = strtolower((string) ($d['status'] ?? $d['state'] ?? ''));
+        return in_array($estado, ['queued', 'processing', 'pending', 'in_progress', 'not_found'], true) && count($d) <= 3;
+    }
+
+    private static function recorrer(array $nodo, array $contexto, string $puerto, array &$candidatos, string $camino): void
+    {
+        // Buque y viaje de este nivel (pasan a los niveles de adentro).
+        foreach ($nodo as $k => $v) {
+            $clave = strtolower((string) $k);
+            if (preg_match('/^(vessel|vessel_?name|ship|ship_?name|buque)$/', $clave)) {
+                $nombre = is_array($v) ? ($v['name'] ?? $v['vessel_name'] ?? $v['vesselName'] ?? null) : $v;
+                if (is_string($nombre) && trim($nombre) !== '' && !ctype_digit(trim($nombre))) {
+                    $contexto['buque'] = trim($nombre);
+                }
+                if (is_array($v) && isset($v['voyage'])) {
+                    $contexto['viaje'] = (string) $v['voyage'];
+                }
+            } elseif (preg_match('/^(voyage|voyage_?(no|number)|viaje)$/', $clave) && is_scalar($v) && trim((string) $v) !== '') {
+                $contexto['viaje'] = trim((string) $v);
+            }
+        }
+
+        // ¿Este nodo es el puerto? (código UN/LOCODE o nombre, propio o en un "location"/"port" de adentro)
+        $lugar = '';
+        foreach ($nodo as $k => $v) {
+            if (is_string($v) && preg_match('/(locode|location|port|place|city|name|pod|destination)/i', (string) $k)) {
+                $lugar .= ' ' . $v;
+            } elseif (is_array($v) && preg_match('/(location|port|place|pod|destination)/i', (string) $k)) {
+                foreach ($v as $vv) {
+                    $lugar .= is_string($vv) ? ' ' . $vv : '';
+                }
+            }
+        }
+        $lugar = strtoupper($lugar);
+        $esPuerto = str_contains($lugar, $puerto) || ($puerto === 'UYMVD' && str_contains($lugar, 'MONTEVIDEO'));
+
+        if ($esPuerto) {
+            foreach ($nodo as $k => $v) {
+                if (!is_string($v) || !preg_match('/(eta|ata|arriv|date|time|discharg)/i', (string) $k)) {
+                    continue;
+                }
+                $fecha = Texto::fecha($v);
+                if ($fecha === null || !preg_match('/^\d{4}-\d{2}-\d{2}/', $fecha)) {
+                    continue;
+                }
+                $texto = strtolower($camino . ' ' . $k . ' ' . implode(' ', array_filter($nodo, 'is_string')));
+                $llegada = (bool) preg_match('/(arriv|eta|ata|discharg|descarg|berth|pod)/', $texto);
+                $real = (bool) preg_match('/(actual|\bata\b|arrived|^ata|_ata|is_actual"?\s*true)/', $texto) || ($nodo['actual'] ?? $nodo['is_actual'] ?? false) === true;
+                $candidatos[] = [
+                    'buque' => $contexto['buque'], 'viaje' => $contexto['viaje'], 'fecha' => $fecha, 'real' => $real,
+                    'puntaje' => ($contexto['buque'] ? 4 : 0) + ($llegada ? 2 : 0) + ($real ? 1 : 0),
+                ];
+            }
+        }
+
+        foreach ($nodo as $k => $v) {
+            if (is_array($v)) {
+                self::recorrer($v, $contexto, $puerto, $candidatos, $camino . '/' . $k);
+            }
+        }
     }
 
     /**

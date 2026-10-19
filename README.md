@@ -86,15 +86,12 @@ En la página se aclara de dónde salió el buque ("según manifiesto 291201" o 
 Además, cada contenedor muestra un resumen: buque, llegada, agencia y conocimiento según el manifiesto; descarga, origen y destino, manifiesto y liberación, DUA,
 mensajes simplificados, tránsito e incautaciones.
 
-**Tracking de las navieras:** cuando Lucía todavía no conoce el contenedor (por ejemplo, mientras navega), o lo conoce
-pero no se pudo saber el buque, se consulta el tracking de la naviera y se toma el buque con el que llega a Montevideo
-(evento de llegada, `ARRI`, en `UYMVD`: la real si la hay, si no la estimada más reciente, si no la planificada).
-Ese buque se vincula a la escala del tablero igual que el de Lucía. Usa las APIs oficiales con el estándar
-**DCSA Track & Trace** (Maersk, Hapag-Lloyd, CMA CGM, ...): cada naviera da la clave al registrarse en su portal de
-desarrolladores. Se configura en `config.php → navieras` (activa, url, encabezado con la clave y prefijos de sus
-contenedores) y se prueba con `php cron/naviera_diagnostico.php CONTENEDOR`. Vienen preparadas Maersk, Hapag-Lloyd,
-CMA CGM, ONE, Evergreen, ZIM, HMM, Yang Ming y MSC (estándar DCSA; la de MSC se pide como "Direct Integration"), y COSCO y PIL (que no usan
-DCSA: su lector se completa con una respuesta real).
+**Tracking de las navieras (FindTEU):** cuando Lucía todavía no conoce el contenedor (por ejemplo, mientras navega), o lo
+conoce pero no se pudo saber el buque, se consulta FindTEU (https://www.findteu.com), que unifica el tracking de todas las
+navieras. Se toma el buque con el que llega a Montevideo (UYMVD) y se vincula a la escala del tablero igual que el de Lucía.
+Se configura en `config.php → navieras` (activa y clave en `X-Authorization-ApiKey`; la de demostración es `123456789`)
+y se prueba con `php cron/naviera_diagnostico.php CONTENEDOR`, que guarda la respuesta en `data/`.
+También acepta APIs oficiales de navieras con el estándar DCSA Track & Trace (ver el ejemplo en `config.example.php`).
 
 **Contenedores de cada usuario:** cada contenedor guarda quién lo cargó. En el tablero y en la página Contenedores se elige
 "Contenedores: Míos / De todos" (se recuerda para la próxima vez). Los clientes son compartidos por todos.

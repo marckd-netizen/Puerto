@@ -1,0 +1,11 @@
+{"container": "MSKU9070323", "scac": "MAEU", "status": "in_transit",
+ "route": {"pol": {"name": "Shanghai", "locode": "CNSHA", "date": "2026-09-20T14:00:00", "actual": true},
+           "pod": {"name": "Montevideo", "locode": "UYMVD", "date": "2026-10-21T10:00:00", "actual": false}},
+ "events": [
+   {"description": "Loaded on vessel", "location": {"name": "Shanghai", "locode": "CNSHA"}, "date": "2026-09-20T14:00:00", "actual": true,
+    "vessel": {"name": "MAERSK ESSEN", "voyage": "238W"}},
+   {"description": "Vessel departure", "location": {"name": "Santos", "locode": "BRSSZ"}, "date": "2026-10-17T20:00:00", "actual": true,
+    "vessel": {"name": "SAN CHRISTOBAL", "voyage": "642S"}},
+   {"description": "Vessel arrival", "location": {"name": "Montevideo", "locode": "UYMVD"}, "date": "2026-10-21T10:00:00", "actual": false,
+    "vessel": {"name": "SAN CHRISTOBAL", "voyage": "642S"}}
+ ]}

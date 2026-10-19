@@ -573,6 +573,16 @@ $r = $cont7->consultarPendientes($luciaVacia, ['pausa_segundos' => 0], strtotime
 $f7 = $db7->query("SELECT * FROM contenedores WHERE numero = 'MSKU9070323'")->fetch();
 verificar($r['errores'] === [] && str_contains((string) $f7['lucia_mensaje'], 'HTTP 401') && (int) $f7['escala_id'] === $idSan, 'si falla el tracking se avisa, sin perder el vínculo anterior');
 
+echo "Tracking unificado (FindTEU, respuestas supuestas)\n";
+$fa = Navieras::interpretar('FINDTEU', 'findteu', file_get_contents(__DIR__ . '/fixtures/findteu_supuesta_a.json'));
+verificar($fa->buque === 'SAN CHRISTOBAL' && $fa->viaje === '642S' && $fa->fecha === '2026-10-21 10:00' && $fa->tipoFecha === 'EST', 'eventos con lugar y buque: toma la llegada a Montevideo (feeder), estimada');
+$fb = Navieras::interpretar('FINDTEU', 'findteu', file_get_contents(__DIR__ . '/fixtures/findteu_supuesta_b.json'));
+verificar($fb->buque === 'SAN CHRISTOBAL' && $fb->viaje === '642S' && $fb->fecha === '2026-10-21 10:00', 'datos planos (vessel_name, pod, eta)');
+verificar(Navieras::interpretar('FINDTEU', 'findteu', '{"status": "processing"}') === null, 'todavía procesando: se reintenta en la próxima pasada');
+$fc = Navieras::interpretar('FINDTEU', 'findteu', '{"events": [{"location": {"locode": "CNSHA"}, "date": "2026-09-20", "vessel": "X"}]}');
+verificar($fc->buque === null && str_contains($fc->resumen[0], 'sin llegada'), 'sin evento en Montevideo: sin buque');
+verificar(array_keys((new Navieras(['lineas' => ['FINDTEU' => ['activa' => true, 'prefijos' => ['*'], 'url' => 'u']]]))->lineasPara('TGHU8785330')) === ['FINDTEU'], 'prefijo "*": cualquier contenedor, también los de leasing');
+
 echo "Zona horaria de una terminal\n";
 verificar(Texto::desdeZona('2026-10-07 10:37', 'UTC') === '2026-10-07 07:37', 'UTC → hora de Uruguay (−3)');
 verificar(Texto::desdeZona('2026-10-08 01:00', 'UTC') === '2026-10-07 22:00', 'cruza el cambio de día');
