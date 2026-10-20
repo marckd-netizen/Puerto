@@ -1,0 +1,339 @@
+<?xml version = "1.0" encoding = "utf-8"?>
+<definitions name="WSMovStock" targetNamespace="LUCIAx" xmlns:wsdlns="LUCIAx" xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns="http://schemas.xmlsoap.org/wsdl/" xmlns:tns="LUCIAx">
+	<types>
+		<schema targetNamespace="LUCIAx" xmlns="http://www.w3.org/2001/XMLSchema" xmlns:SOAP-ENC="http://schemas.xmlsoap.org/soap/encoding/" elementFormDefault="qualified">
+			<complexType name="WSMovStockSDT">
+				<sequence>
+					<element name="DEPOSITO_MOV" type="xsd:string">
+					</element>
+					<element name="NRO_MOV" type="xsd:long">
+					</element>
+					<element name="ANIO_MOV" type="xsd:short">
+					</element>
+					<element name="TIPO_MOV" type="xsd:string">
+					</element>
+					<element name="FECHA_MOV" type="xsd:int">
+					</element>
+					<element name="ESTADO_MOV" type="xsd:string">
+					</element>
+					<element name="TIPO_BULTO" type="xsd:string">
+					</element>
+					<element name="BULTOS" type="xsd:double">
+					</element>
+					<element name="BULTOS_USADOS" type="xsd:double">
+					</element>
+					<element name="BULTOS_SALIDOS" type="xsd:double">
+					</element>
+					<element name="PESO_BRUTO" type="xsd:double">
+					</element>
+					<element name="DESCRIPCION_MOV" type="xsd:string">
+					</element>
+					<element name="DOC_CONSIG" type="xsd:string">
+					</element>
+					<element name="NRO_DOC_CONSIG" type="xsd:string">
+					</element>
+					<element name="NOM_CONSIG" type="xsd:string">
+					</element>
+					<element name="LUGAR_ENDOSO" type="xsd:string">
+					</element>
+					<element name="FECHA_ENDOSO" type="xsd:int">
+					</element>
+					<element name="OPERACION_INGRESO" type="xsd:string">
+					</element>
+					<element name="NRO_ACTA" type="xsd:int">
+					</element>
+					<element name="TXT_ACTA" type="xsd:string">
+					</element>
+					<element name="DOC_ENTRADA" type="xsd:string">
+					</element>
+					<element name="TIPO_DOC_ENT" type="xsd:string">
+					</element>
+					<element name="NRO_DOC_ENT" type="xsd:string">
+					</element>
+					<element name="DEP_DOC_ENT" type="xsd:string">
+					</element>
+					<element name="FECHA_DOC_ENT" type="xsd:int">
+					</element>
+					<element name="LINEA_DOC_ENT" type="xsd:int">
+					</element>
+					<element name="LINEA2_DOC_ENT" type="xsd:int">
+					</element>
+					<element name="DOC_SALIDA" type="xsd:string">
+					</element>
+					<element name="ADUANA_DOC_SAL" type="xsd:string">
+					</element>
+					<element name="ANIO_DOC_SAL" type="xsd:string">
+					</element>
+					<element name="LINEA_DOC_SAL" type="xsd:string">
+					</element>
+					<element name="PARTIDA" type="xsd:string">
+					</element>
+					<element name="COD_PRODUCTO" type="xsd:long">
+					</element>
+					<element name="AGENTE" type="xsd:string">
+					</element>
+					<element name="OPERACION_PENDIENTE" type="xsd:string">
+					</element>
+					<element name="ASOCIACIONESMS">
+						<complexType>
+							<sequence>
+								<element minOccurs="0" maxOccurs="unbounded" name="ASOCIACIONMS" type="tns:WSMovStockSDT.ASOCIACIONMS">
+								</element>
+							</sequence>
+						</complexType>
+					</element>
+					<element name="DESCENDIENTES">
+						<complexType>
+							<sequence>
+								<element minOccurs="0" maxOccurs="unbounded" name="DESCENDIENTE" type="tns:WSMovStockSDT.DESCENDIENTE">
+								</element>
+							</sequence>
+						</complexType>
+					</element>
+					<element name="DUAASOCIACIONES">
+						<complexType>
+							<sequence>
+								<element minOccurs="0" maxOccurs="unbounded" name="DUAASOCIACION" type="tns:WSMovStockSDT.DUAASOCIACION">
+								</element>
+							</sequence>
+						</complexType>
+					</element>
+					<element name="ANCESTROS">
+						<complexType>
+							<sequence>
+								<element minOccurs="0" maxOccurs="unbounded" name="ANCESTRO" type="tns:WSMovStockSDT.ANCESTRO">
+								</element>
+							</sequence>
+						</complexType>
+					</element>
+					<element name="CONTENEDORES">
+						<complexType>
+							<sequence>
+								<element minOccurs="0" maxOccurs="unbounded" name="CONTENEDOR" type="tns:WSMovStockSDT.CONTENEDOR">
+								</element>
+							</sequence>
+						</complexType>
+					</element>
+					<element name="DATOSVARIABLES">
+						<complexType>
+							<sequence>
+								<element minOccurs="0" maxOccurs="unbounded" name="DATOVARIABLE" type="tns:WSMovStockSDT.DATOVARIABLE">
+								</element>
+							</sequence>
+						</complexType>
+					</element>
+				</sequence>
+			</complexType>
+			<complexType name="ArrayOfWSMovStockSDT.ASOCIACIONMS">
+				<sequence>
+					<element minOccurs="0" maxOccurs="unbounded" name="WSMovStockSDT.ASOCIACIONMS" type="tns:WSMovStockSDT.ASOCIACIONMS">
+					</element>
+				</sequence>
+			</complexType>
+			<complexType name="WSMovStockSDT.ASOCIACIONMS">
+				<sequence>
+					<element name="NRO" type="xsd:int">
+					</element>
+					<element name="ANIO_MS" type="xsd:short">
+					</element>
+					<element name="NRO_MS" type="xsd:int">
+					</element>
+					<element name="LINEA_MS" type="xsd:short">
+					</element>
+					<element name="NRO_ASOC_MS" type="xsd:short">
+					</element>
+					<element name="BULTOS" type="xsd:double">
+					</element>
+					<element name="BULTOS_USUADOS" type="xsd:double">
+					</element>
+					<element name="PESO_BRUTO" type="xsd:double">
+					</element>
+					<element name="ESTADO_ASOC" type="xsd:string">
+					</element>
+					<element name="FECHA_ASOC" type="xsd:string">
+					</element>
+				</sequence>
+			</complexType>
+			<complexType name="ArrayOfWSMovStockSDT.DESCENDIENTE">
+				<sequence>
+					<element minOccurs="0" maxOccurs="unbounded" name="WSMovStockSDT.DESCENDIENTE" type="tns:WSMovStockSDT.DESCENDIENTE">
+					</element>
+				</sequence>
+			</complexType>
+			<complexType name="WSMovStockSDT.DESCENDIENTE">
+				<sequence>
+					<element name="NRO" type="xsd:int">
+					</element>
+					<element name="RELACION" type="xsd:string">
+					</element>
+					<element name="NRO_MOV_DESC" type="xsd:long">
+					</element>
+					<element name="ANIO_MOV_DESC" type="xsd:short">
+					</element>
+					<element name="TIPO_MOV_DESC" type="xsd:string">
+					</element>
+					<element name="ESTADO_MOV_DESC" type="xsd:string">
+					</element>
+					<element name="BULTOS_REL_DESC" type="xsd:double">
+					</element>
+				</sequence>
+			</complexType>
+			<complexType name="ArrayOfWSMovStockSDT.DUAASOCIACION">
+				<sequence>
+					<element minOccurs="0" maxOccurs="unbounded" name="WSMovStockSDT.DUAASOCIACION" type="tns:WSMovStockSDT.DUAASOCIACION">
+					</element>
+				</sequence>
+			</complexType>
+			<complexType name="WSMovStockSDT.DUAASOCIACION">
+				<sequence>
+					<element name="NRO" type="xsd:int">
+					</element>
+					<element name="ADUANA_DUA" type="xsd:string">
+					</element>
+					<element name="ANIO_DUA" type="xsd:string">
+					</element>
+					<element name="NRO_DUA" type="xsd:string">
+					</element>
+					<element name="ITEM_DUA" type="xsd:string">
+					</element>
+					<element name="BULTOS_ASOC" type="xsd:double">
+					</element>
+					<element name="BULTOS_USADOS" type="xsd:double">
+					</element>
+					<element name="ESTADO_ASOC" type="xsd:string">
+					</element>
+					<element name="FECHA_ASOC" type="xsd:string">
+					</element>
+					<element name="DEPOSITO_MOV" type="xsd:string">
+					</element>
+					<element name="ANIO_MOV" type="xsd:short">
+					</element>
+					<element name="NRO_MOV" type="xsd:long">
+					</element>
+				</sequence>
+			</complexType>
+			<complexType name="ArrayOfWSMovStockSDT.ANCESTRO">
+				<sequence>
+					<element minOccurs="0" maxOccurs="unbounded" name="WSMovStockSDT.ANCESTRO" type="tns:WSMovStockSDT.ANCESTRO">
+					</element>
+				</sequence>
+			</complexType>
+			<complexType name="WSMovStockSDT.ANCESTRO">
+				<sequence>
+					<element name="NRO" type="xsd:int">
+					</element>
+					<element name="RELACION" type="xsd:string">
+					</element>
+					<element name="NRO_MOV_ANC" type="xsd:long">
+					</element>
+					<element name="ANIO_MOV_ANC" type="xsd:short">
+					</element>
+					<element name="TIPO_MOV_ANC" type="xsd:string">
+					</element>
+					<element name="ESTADO_MOV_ANC" type="xsd:string">
+					</element>
+					<element name="BULTOS_REL_ANC" type="xsd:double">
+					</element>
+				</sequence>
+			</complexType>
+			<complexType name="ArrayOfWSMovStockSDT.CONTENEDOR">
+				<sequence>
+					<element minOccurs="0" maxOccurs="unbounded" name="WSMovStockSDT.CONTENEDOR" type="tns:WSMovStockSDT.CONTENEDOR">
+					</element>
+				</sequence>
+			</complexType>
+			<complexType name="WSMovStockSDT.CONTENEDOR">
+				<sequence>
+					<element name="NRO" type="xsd:int">
+					</element>
+					<element name="CONTENEDORNUMERO" type="xsd:string">
+					</element>
+					<element name="CANTIDAD_BULTOS" type="xsd:double">
+					</element>
+					<element name="ESTADO" type="xsd:string">
+					</element>
+					<element name="PRECINTO1" type="xsd:string">
+					</element>
+					<element name="PRECINTO2" type="xsd:string">
+					</element>
+					<element name="PRECINTO3" type="xsd:string">
+					</element>
+					<element name="PRECINTO4" type="xsd:string">
+					</element>
+					<element name="SKCONTAMCOD" type="xsd:string">
+					</element>
+					<element name="INDICADOR_COMPLETITUD" type="xsd:string">
+					</element>
+					<element name="OPERACION_PENDIENTE" type="xsd:string">
+					</element>
+				</sequence>
+			</complexType>
+			<complexType name="ArrayOfWSMovStockSDT.DATOVARIABLE">
+				<sequence>
+					<element minOccurs="0" maxOccurs="unbounded" name="WSMovStockSDT.DATOVARIABLE" type="tns:WSMovStockSDT.DATOVARIABLE">
+					</element>
+				</sequence>
+			</complexType>
+			<complexType name="WSMovStockSDT.DATOVARIABLE">
+				<sequence>
+					<element name="NRO" type="xsd:int">
+					</element>
+					<element name="TIPO" type="xsd:string">
+					</element>
+					<element name="ID" type="xsd:string">
+					</element>
+					<element name="ESTADO" type="xsd:string">
+					</element>
+					<element name="OPERACION_PENDIENTE" type="xsd:string">
+					</element>
+				</sequence>
+			</complexType>
+			<element name="WSMovStock.Execute">
+				<complexType>
+					<sequence>
+						<element minOccurs="1" maxOccurs="1" name="Cgdepidstk" type="xsd:string" />
+						<element minOccurs="1" maxOccurs="1" name="Cgmovskid" type="xsd:long" />
+						<element minOccurs="1" maxOccurs="1" name="Cganomov" type="xsd:short" />
+						<element minOccurs="1" maxOccurs="1" name="Cgmovtpo" type="xsd:string" />
+					</sequence>
+				</complexType>
+			</element>
+			<element name="WSMovStock.ExecuteResponse">
+				<complexType>
+					<sequence>
+						<element minOccurs="1" maxOccurs="1" name="Movimientostock" type="tns:WSMovStockSDT" />
+					</sequence>
+				</complexType>
+			</element>
+		</schema>
+	</types>
+	<message name="WSMovStock.ExecuteSoapIn">
+		<part name="parameters" element="tns:WSMovStock.Execute" />
+	</message>
+	<message name="WSMovStock.ExecuteSoapOut">
+		<part name="parameters" element="tns:WSMovStock.ExecuteResponse" />
+	</message>
+	<portType name="WSMovStockSoapPort">
+		<operation name="Execute">
+			<input message="wsdlns:WSMovStock.ExecuteSoapIn" />
+			<output message="wsdlns:WSMovStock.ExecuteSoapOut" />
+		</operation>
+	</portType>
+	<binding name="WSMovStockSoapBinding" type="wsdlns:WSMovStockSoapPort">
+		<soap:binding style="document" transport="http://schemas.xmlsoap.org/soap/http" />
+		<operation name="Execute">
+			<soap:operation soapAction="LUCIAxaction/AWSMOVSTOCK.Execute" />
+			<input>
+				<soap:body use="literal" />
+			</input>
+			<output>
+				<soap:body use="literal" />
+			</output>
+		</operation>
+	</binding>
+	<service name="WSMovStock">
+		<port name="WSMovStockSoapPort" binding="wsdlns:WSMovStockSoapBinding">
+			<soap:address location="https://servicios.aduanas.gub.uy/LuciaWS/awsmovstock.aspx" />
+		</port>
+	</service>
+</definitions>
