@@ -204,11 +204,12 @@ encabezado('Arribos Montevideo', (int) ($cfg['auto_refresh'] ?? 300));
                 <?php if ($viajes): ?><span class="viaje"><?= e(implode(' / ', $viajes)) ?></span><?php endif; ?>
                 <?php if ($f['contenedores']): $clientesFila = array_unique(array_filter(array_column($f['contenedores'], 'cliente'))); ?>
                     <details class="contenedores-buque">
-                        <?php $enStock = count(array_filter($f['contenedores'], fn($c) => (stockContenedor($c, $cfg)['estado'] ?? '') === 'en_stock')); ?>
-                        <summary>📦 <?= count($f['contenedores']) ?> contenedor<?= count($f['contenedores']) > 1 ? 'es' : '' ?><?= $enStock ? " · $enStock en stock" : '' ?><?= $clientesFila ? ' · ' . e(implode(', ', array_slice($clientesFila, 0, 2))) . (count($clientesFila) > 2 ? ' y ' . (count($clientesFila) - 2) . ' más' : '') : '' ?></summary>
+                        <?php $enStock = count(array_filter($f['contenedores'], fn($c) => (stockContenedor($c, $cfg)['estado'] ?? '') === 'en_stock'));
+                              $sinLiberar = count(array_filter($f['contenedores'], fn($c) => (liberacionContenedor($c)['estado'] ?? '') === 'no_liberado')); ?>
+                        <summary>📦 <?= count($f['contenedores']) ?> contenedor<?= count($f['contenedores']) > 1 ? 'es' : '' ?><?= $sinLiberar ? " · $sinLiberar sin liberar" : '' ?><?= $enStock ? " · $enStock en stock" : '' ?><?= $clientesFila ? ' · ' . e(implode(', ', array_slice($clientesFila, 0, 2))) . (count($clientesFila) > 2 ? ' y ' . (count($clientesFila) - 2) . ' más' : '') : '' ?></summary>
                         <ul>
                             <?php foreach ($f['contenedores'] as $c): ?>
-                                <li><strong><?= e(Validacion::formatearContenedor($c['numero'])) ?></strong> <?= etiquetaTipo($c) ?> · Carpeta <?= e($c['carpeta']) ?><?= $c['cliente'] ? ' · ' . e($c['cliente']) : '' ?><?= $verDe === null && $c['usuario'] ? ' · <small>' . e($c['usuario']) . '</small>' : '' ?> <?= etiquetaStock($c, $cfg) ?></li>
+                                <li><strong><?= e(Validacion::formatearContenedor($c['numero'])) ?></strong> <?= etiquetaTipo($c) ?> · Carpeta <?= e($c['carpeta']) ?><?= $c['cliente'] ? ' · ' . e($c['cliente']) : '' ?><?= $verDe === null && $c['usuario'] ? ' · <small>' . e($c['usuario']) . '</small>' : '' ?> <?= etiquetaLiberacion($c) ?> <?= etiquetaStock($c, $cfg) ?></li>
                             <?php endforeach; ?>
                         </ul>
                     </details>

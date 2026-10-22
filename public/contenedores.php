@@ -253,6 +253,7 @@ mostrarAvisos();
             <td><?= e($c['cliente']) ?: '<span class="sin-dato">—</span>' ?></td>
             <td>
                 <?= e(ESTADOS_LUCIA[$c['lucia_estado']] ?? $c['lucia_estado']) ?>
+                <?php if ($etiqueta = etiquetaLiberacion($c)): ?><div><?= $etiqueta ?></div><?php endif; ?>
                 <?php if ($etiqueta = etiquetaStock($c, $cfg)): ?><div><?= $etiqueta ?></div><?php endif; ?>
                 <?php if ($c['lucia_buque']): ?><div><small>Buque:</small> <?= e($c['lucia_buque']) ?> <?= e($c['lucia_viaje']) ?></div><?php endif; ?>
                 <?php if ($c['lucia_mensaje']): ?><div class="detalle"><?= e($c['lucia_mensaje']) ?></div><?php endif; ?>

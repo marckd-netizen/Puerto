@@ -67,6 +67,33 @@ function stockContenedor(array $c, array $cfg): ?array
     }];
 }
 
+/**
+ * Si el manifiesto del contenedor está liberado en Lucía. null si todavía no hay datos de Lucía.
+ * @return ?array{estado: string, texto: string}
+ */
+function liberacionContenedor(array $c): ?array
+{
+    if (!in_array($c['lucia_estado'] ?? '', ['encontrado', 'en_stock'], true)) {
+        return null;
+    }
+    $l = LuciaSoap::liberacionDeDetalle(json_decode((string) ($c['lucia_detalle'] ?? ''), true) ?: []);
+    if ($l === null) {
+        return null;
+    }
+    $fecha = $l['fecha'] ? ' ' . date('d/m H:i', strtotime($l['fecha'])) : '';
+    return ['estado' => $l['estado'], 'texto' => match ($l['estado']) {
+        'liberado'    => "Manifiesto {$l['manifiesto']} liberado$fecha",
+        'no_liberado' => "Manifiesto {$l['manifiesto']} sin liberar",
+        default       => 'Sin manifestar',
+    }];
+}
+
+function etiquetaLiberacion(array $c): string
+{
+    $l = liberacionContenedor($c);
+    return $l === null ? '' : '<span class="liberacion liberacion-' . e($l['estado']) . '">' . e($l['texto']) . '</span>';
+}
+
 function etiquetaStock(array $c, array $cfg): string
 {
     $s = stockContenedor($c, $cfg);

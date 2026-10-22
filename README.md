@@ -110,6 +110,10 @@ cuál debería ser el dígito. Lo mismo al importar desde Excel.
 desde Excel va como cuarta columna, opcional (Entero/E/FCL o Apertura/A/LCL). Se muestra como etiqueta en el tablero y en
 Contenedores, donde se puede filtrar y cambiar con "Pasar a apertura" / "Pasar a entero".
 
+**Manifiesto liberado:** con las líneas de manifiesto de Lucía (`LINMANIF`: `LIBERADO` y `FECHALIB`) cada contenedor muestra
+"Manifiesto N liberado dd/mm hh:mm" (verde), "Manifiesto N sin liberar" (rojo) o "Sin manifestar", en el tablero y en
+Contenedores. Con varias líneas, liberado solo si lo están todas. El resumen del buque cuenta los que faltan liberar.
+
 **Stock:** con los movimientos de stock de Lucía (`MOVIMSTOCK`), cada contenedor muestra una etiqueta, tanto en el
 tablero (debajo del buque) como en la página Contenedores:
 - **En stock** (verde): tiene una entrada en un depósito sin salida posterior. Se indica el depósito y desde cuándo.

@@ -363,6 +363,14 @@ verificar(LuciaSoap::stockDeDetalle(['buque' => 'X']) === null, 'stock: sin resp
 require_once dirname(__DIR__) . '/src/vistas.php';
 $cHamu = ['lucia_estado' => 'encontrado', 'lucia_detalle' => json_encode($hamu->detalle)];
 verificar(stockContenedor($cHamu, $base)['texto'] === 'Salió del stock 14/10 en depósito 1694', 'stock: texto para mostrar');
+verificar($hamu->detalle['liberacion'] === ['estado' => 'liberado', 'manifiesto' => '291201', 'fecha' => '2026-10-02 15:09'], 'manifiesto liberado (LIBERADO = S, FECHALIB)');
+verificar(liberacionContenedor($cHamu)['texto'] === 'Manifiesto 291201 liberado 02/10 15:09', 'liberación: texto para mostrar');
+$lin = fn($lib, $f = '') => ['NROMIC' => '291201', 'NROLINEA' => '1', 'LIBERADO' => $lib, 'FECHALIB' => $f];
+verificar(LuciaSoap::situacionManifiesto([$lin('N')])['estado'] === 'no_liberado' && LuciaSoap::situacionManifiesto([])['estado'] === 'sin_manifiesto', 'liberación: sin liberar / sin manifestar');
+verificar(LuciaSoap::situacionManifiesto([$lin('S', '2026-10-02T15:09:29'), $lin('N')])['estado'] === 'no_liberado', 'liberación: con varias líneas, liberado solo si lo están todas');
+$detSinLib = $hamu->detalle;
+unset($detSinLib['liberacion']);
+verificar(LuciaSoap::liberacionDeDetalle($detSinLib) === $hamu->detalle['liberacion'], 'liberación: contenedores consultados antes se calculan con la respuesta guardada');
 verificar(stockContenedor(['lucia_estado' => 'pendiente', 'lucia_detalle' => null], $base) === null, 'stock: contenedor sin consultar no muestra nada');
 verificar(str_contains($res, 'Tránsito: viaje 8319011 · matrícula AAA0000 · 14/10'), 'resumen: tránsito');
 

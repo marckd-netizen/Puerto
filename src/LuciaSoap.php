@@ -250,6 +250,7 @@ final class LuciaSoap implements ConsultaLucia
             $resumen[] = "Mensaje simplificado {$m['ADUANA']}-{$m['ANO']}-{$m['NUMERO']} · estado {$m['ESTADO']}";
         }
         $situacionStock = self::situacionStock($stock);
+        $liberacion = self::situacionManifiesto($lineas);
         if ($ultimo = self::masReciente($viajes, 'FECHA')) {
             $resumen[] = "Tránsito: viaje {$ultimo['VIAJE']} · matrícula {$ultimo['MATRICULA']} · "
                 . substr(Texto::mostrarFecha(Texto::fecha($ultimo['FECHA'] ?? null)), 0, 5) . " · estado {$ultimo['ESTADO']}";
@@ -266,7 +267,7 @@ final class LuciaSoap implements ConsultaLucia
             null,
             null,
             $fecha,
-            ['secciones_con_datos' => $conDatos, 'stock' => $situacionStock, 'manifiesto' => $manifiesto, 'claves_manifiesto' => $claves, 'mensaje' => $mensaje, 'resumen' => $resumen, 'respuesta' => $datos],
+            ['secciones_con_datos' => $conDatos, 'stock' => $situacionStock, 'liberacion' => $liberacion, 'manifiesto' => $manifiesto, 'claves_manifiesto' => $claves, 'mensaje' => $mensaje, 'resumen' => $resumen, 'respuesta' => $datos],
             $terminal,
             $resumen,
         );
@@ -306,6 +307,49 @@ final class LuciaSoap implements ConsultaLucia
             }
         }
         return $enStock ?? $salida ?? ['estado' => 'sin_stock', 'deposito' => null, 'fecha' => null];
+    }
+
+    /**
+     * Si el manifiesto del contenedor está liberado, según las líneas de manifiesto (LINMANIF):
+     * LIBERADO = 'S' y FECHALIB. Con varias líneas, liberado solo si lo están todas.
+     *
+     * @return array{estado: 'liberado'|'no_liberado'|'sin_manifiesto', manifiesto: ?string, fecha: ?string} fecha "Y-m-d H:i"
+     */
+    public static function situacionManifiesto(array $lineas): array
+    {
+        $lineas = array_values(array_filter($lineas, fn($l) => is_array($l) && trim((string) ($l['NROMIC'] ?? '')) !== ''));
+        if (!$lineas) {
+            return ['estado' => 'sin_manifiesto', 'manifiesto' => null, 'fecha' => null];
+        }
+        $liberado = true;
+        $fecha = null;
+        foreach ($lineas as $l) {
+            if (strtoupper(trim((string) ($l['LIBERADO'] ?? ''))) !== 'S') {
+                $liberado = false;
+            }
+            $f = Texto::fecha($l['FECHALIB'] ?? null);
+            if ($f !== null && ($fecha === null || $f > $fecha)) {
+                $fecha = $f;
+            }
+        }
+        $numeros = array_unique(array_map(fn($l) => trim((string) $l['NROMIC']), $lineas));
+        return [
+            'estado' => $liberado ? 'liberado' : 'no_liberado',
+            'manifiesto' => implode(', ', $numeros),
+            'fecha' => $liberado ? $fecha : null,
+        ];
+    }
+
+    /** Liberación guardada en el detalle de un contenedor (o calculada con la respuesta guardada). null sin datos de Lucía. */
+    public static function liberacionDeDetalle(array $detalle): ?array
+    {
+        if (isset($detalle['liberacion']['estado'])) {
+            return $detalle['liberacion'];
+        }
+        if (!isset($detalle['respuesta']) || !is_array($detalle['respuesta']) || !isset($detalle['secciones_con_datos'])) {
+            return null;
+        }
+        return self::situacionManifiesto(self::items($detalle['respuesta'], 'LINMANIF', 'Linea'));
     }
 
     /**
